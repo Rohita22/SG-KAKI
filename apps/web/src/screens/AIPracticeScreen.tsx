@@ -1,0 +1,222 @@
+import { useRef, useState, useEffect } from 'react';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { RotateCcw } from 'lucide-react';
+import { useAIPractice } from '@/state/useAIPractice';
+import { useProgress } from '@/state/useProgress';
+import { isScenarioUnlocked } from '@/game/aiScenarioUnlocks';
+import { activeCountryPack } from '@/content/activeCountryPack';
+import { ChatBubble, TypingBubble } from '@/components/practice/ChatBubble';
+import { ConversationControls } from '@/components/practice/ConversationControls';
+import { Button } from '@/components/ui/Button';
+import { ChallengeScene } from '@/components/challenges/scenes/ChallengeScene';
+import { VisualNovelScene } from '@/components/practice/VisualNovelScene';
+
+// Natural-ending policy shared by every scenario, scripted or not: never
+// finish before MIN_TURNS_TO_FINISH even if the AI signals readiness early,
+// but force it open by MAX_TURNS_TO_FINISH so a practice session can't run
+// forever if the AI never signals. Scenarios with a full scripted ending
+// (visualScene + completionScript) define their own minTurns/maxTurns instead.
+const MIN_TURNS_TO_FINISH = 2;
+const MAX_TURNS_TO_FINISH = 6;
+
+const PRACTICE_SKILLS = [
+  'Casual communication',
+  'Understanding Singlish',
+  'Responding naturally',
+];
+
+export function AIPracticeScreen() {
+  const { scenarioId } = useParams<{ scenarioId: string }>();
+  const navigate = useNavigate();
+  const { state, awardXp } = useProgress();
+  const {
+    scenario,
+    history,
+    isTyping,
+    suggestions,
+    suggestionsLoading,
+    readyToEnd,
+    sendUserMessage,
+    restart,
+  } = useAIPractice(scenarioId ?? '');
+  const [draft, setDraft] = useState('');
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+  }, [history, isTyping]);
+
+  if (!scenario) return null;
+
+  if (!isScenarioUnlocked(scenario.id, state.completedMissionIds, activeCountryPack.aiScenarios)) {
+    return <Navigate to="/practice" replace />;
+  }
+
+  const turnCount = history.filter((m) => m.role === 'user').length;
+  const stepCount = Math.min(4, turnCount + 1);
+  const hasScriptedEnding = Boolean(scenario.visualScene?.teacherImage && scenario.completionScript);
+  const canFinish =
+    !hasScriptedEnding &&
+    turnCount >= MIN_TURNS_TO_FINISH &&
+    (readyToEnd || turnCount >= MAX_TURNS_TO_FINISH);
+
+  const singlishHints = activeCountryPack.phrases
+    .filter((p) => state.unlockedPhraseIds.includes(p.id))
+    .filter((p) => !scenario.hintCategories || scenario.hintCategories.includes(p.category))
+    .sort((a, b) => a.difficulty - b.difficulty)
+    .slice(0, 4)
+    .map((p) => ({ id: p.id, word: p.word, meaning: p.meaning }));
+
+  function handleSend(text: string) {
+    setDraft('');
+    void sendUserMessage(text);
+  }
+
+  function handleRestart() {
+    setDraft('');
+    restart();
+  }
+
+  function handleComplete() {
+    if (!scenario) return;
+    awardXp(scenario.completionXp);
+    navigate('/progress');
+  }
+
+  function handleSessionComplete() {
+    if (!scenario) return;
+    awardXp(scenario.completionXp);
+  }
+
+  return (
+    <div>
+      <div className="flex items-center gap-2">
+        <h1 className="text-xl font-extrabold text-sg-navy lg:text-2xl">AI Practice</h1>
+        <span className="rounded-full bg-sg-xp/20 px-2 py-0.5 text-[10px] font-black text-sg-navy">
+          BETA
+        </span>
+      </div>
+      <p className="mt-1 text-sm text-sg-navy/50">
+        Practice a real conversation with an AI classmate.
+      </p>
+
+      <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-[300px_1fr] lg:items-start">
+        <div className="rounded-3xl bg-white p-6 shadow-card lg:sticky lg:top-8">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-sg-navy/40">
+                Scenario
+              </p>
+              <h2 className="mt-1 text-lg font-extrabold text-sg-navy">{scenario.title}</h2>
+            </div>
+            {history.length > 0 && (
+              <button
+                type="button"
+                onClick={handleRestart}
+                aria-label="Restart conversation"
+                title="Restart conversation"
+                className="flex shrink-0 items-center gap-1 rounded-full bg-sg-bg px-2.5 py-1.5 text-xs font-bold text-sg-navy/60 transition-colors hover:bg-black/10 hover:text-sg-navy"
+              >
+                <RotateCcw className="size-3.5" />
+                Restart
+              </button>
+            )}
+          </div>
+          <p className="mt-1.5 text-sm text-sg-navy/60">{scenario.setup}</p>
+
+          <p className="mt-5 text-xs font-bold uppercase tracking-wide text-sg-navy/40">
+            What you're practicing
+          </p>
+          <ul className="mt-2 space-y-1.5">
+            {PRACTICE_SKILLS.map((skill) => (
+              <li key={skill} className="flex items-center gap-2 text-sm text-sg-navy/70">
+                <span className="size-1.5 shrink-0 rounded-full bg-sg-blue" />
+                {skill}
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-5 flex gap-1.5">
+            {[0, 1, 2, 3].map((i) => (
+              <span
+                key={i}
+                className={`h-1.5 flex-1 rounded-full ${i < stepCount ? 'bg-sg-xp' : 'bg-black/10'}`}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div>
+          {scenario.visualScene ? (
+            <VisualNovelScene
+              visualScene={scenario.visualScene}
+              personaName={scenario.personaName}
+              history={history}
+              isTyping={isTyping}
+              suggestions={suggestions}
+              suggestionsLoading={suggestionsLoading}
+              readyToEnd={readyToEnd}
+              fallbackOpeners={scenario.suggestedOpeners}
+              singlishHints={singlishHints}
+              completionScript={scenario.completionScript}
+              completionXp={scenario.completionXp}
+              draft={draft}
+              onDraftChange={setDraft}
+              onSend={handleSend}
+              onSessionComplete={handleSessionComplete}
+              onRestart={handleRestart}
+              onDone={() => navigate('/progress')}
+            />
+          ) : (
+            <>
+              {scenario.sceneKey && scenario.sceneKey !== 'none' && (
+                <div className="mb-4">
+                  <ChallengeScene scene={scenario.sceneKey} />
+                  {scenario.personaName && (
+                    <p className="mt-2 text-xs font-bold uppercase tracking-wide text-sg-navy/40">
+                      Chatting with {scenario.personaName}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="flex h-[440px] flex-col overflow-hidden rounded-3xl bg-white shadow-card sm:h-[520px] lg:h-[600px]">
+                <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-5">
+                  {history.map((m) => (
+                    <ChatBubble key={m.id} message={m} />
+                  ))}
+                  {isTyping && <TypingBubble />}
+                </div>
+
+                <ConversationControls
+                  turnCount={turnCount}
+                  suggestions={suggestions}
+                  suggestionsLoading={suggestionsLoading}
+                  isTyping={isTyping}
+                  fallbackOpeners={scenario.suggestedOpeners}
+                  singlishHints={singlishHints}
+                  draft={draft}
+                  onDraftChange={setDraft}
+                  onSend={handleSend}
+                />
+              </div>
+            </>
+          )}
+
+          {canFinish && (
+            <div className="mt-4 rounded-3xl bg-white px-5 py-4 shadow-card">
+              <Button
+                variant="secondary"
+                size="lg"
+                className="w-full"
+                onClick={handleComplete}
+              >
+                Finish Practice (+{scenario.completionXp} XP)
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

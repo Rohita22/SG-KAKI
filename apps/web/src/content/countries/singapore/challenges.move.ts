@@ -1,0 +1,185 @@
+import type { Challenge } from '@/content/types';
+
+export const moveChallenges: Challenge[] = [
+  {
+    id: 'move-l1-c1',
+    lessonId: 'move-l1',
+    type: 'multiple-choice',
+    category: 'gettingAround',
+    scene: 'train',
+    context: "You're heading into an MRT station for the first time.",
+    prompt: 'What do you need before you can pass through the gantry?',
+    options: [
+      {
+        id: 'a',
+        label: 'A valid transit card or contactless card/phone to tap',
+      },
+      { id: 'b', label: 'Cash paid to a booth attendant' },
+      { id: 'c', label: 'A printed boarding pass' },
+      { id: 'd', label: 'Nothing — the gates are always open' },
+    ],
+    correctOptionId: 'a',
+    explanation:
+      'MRT and bus fares run on tap-in, tap-out — a transit card (like EZ-Link) or a contactless bank card/phone both work directly at the gantry.',
+    xp: 10,
+    difficulty: 1,
+  },
+  {
+    id: 'move-l2-c1',
+    lessonId: 'move-l2',
+    type: 'can-cannot',
+    category: 'gettingAround',
+    scene: 'train',
+    context:
+      "You tapped in but realise you're at the wrong exit, and want to leave without taking a train.",
+    prompt: 'Can you just walk out without tapping out at a gantry?',
+    options: [
+      { id: 'can', label: 'Can' },
+      { id: 'cannot', label: 'Cannot' },
+    ],
+    correctOptionId: 'cannot',
+    explanation:
+      "You need to tap out at a gantry to close the fare properly — otherwise the system may charge a maximum fare or flag your card on the next tap-in.",
+    xp: 10,
+    difficulty: 2,
+  },
+  {
+    id: 'move-l3-c1',
+    lessonId: 'move-l3',
+    type: 'multiple-choice',
+    category: 'gettingAround',
+    scene: 'escalator',
+    context: "You're on an escalator.",
+    prompt: "What's the local norm?",
+    options: [
+      { id: 'a', label: 'Stand on the left' },
+      { id: 'b', label: 'Stand on the right' },
+      { id: 'c', label: 'Stand in the middle' },
+    ],
+    correctOptionId: 'a',
+    explanation:
+      'Stand on the left, walk on the right. This keeps things moving smoothly and is one of the most consistently followed unwritten rules in Singapore.',
+    xp: 10,
+    difficulty: 1,
+  },
+  {
+    id: 'move-l4-c1',
+    lessonId: 'move-l4',
+    type: 'multiple-choice',
+    category: 'gettingAround',
+    scene: 'street',
+    context: "You're boarding a public bus.",
+    prompt: 'What should you do as you get on?',
+    options: [
+      { id: 'a', label: 'Tap your card/phone on the reader by the driver' },
+      { id: 'b', label: 'Pay the driver in cash only' },
+      { id: 'c', label: 'Just walk on — no tapping needed' },
+      { id: 'd', label: 'Show ID to the driver' },
+    ],
+    correctOptionId: 'a',
+    explanation:
+      "Buses use the same tap-in/tap-out system as the MRT — and you'll need to tap again as you alight, since bus fares are distance-based.",
+    xp: 10,
+    difficulty: 1,
+  },
+  {
+    id: 'move-l5-c1',
+    lessonId: 'move-l5',
+    type: 'scenario-decision',
+    category: 'gettingAround',
+    scene: 'street',
+    context: "You've booked a Grab and the driver has just arrived.",
+    prompt: "What's expected of you?",
+    options: [
+      {
+        id: 'a',
+        label: 'Confirm your name/pickup point and get in promptly',
+      },
+      { id: 'b', label: 'Make the driver wait 10+ minutes with no notice' },
+      { id: 'c', label: 'Negotiate a different fare in person' },
+      { id: 'd', label: 'Always sit in the front seat' },
+    ],
+    correctOptionId: 'a',
+    explanation:
+      'A quick name/pickup confirmation and boarding promptly keeps things smooth for the driver and any other stops on their route.',
+    xp: 15,
+    difficulty: 2,
+  },
+  {
+    id: 'move-l6-c1',
+    lessonId: 'move-l6',
+    type: 'sort',
+    category: 'gettingAround',
+    scene: 'train',
+    prompt: 'Put the steps of a typical MRT journey into the correct order.',
+    items: [
+      { id: 'plan', label: 'Check the map / plan your route' },
+      { id: 'in', label: 'Tap in at the gantry' },
+      { id: 'ride', label: 'Take the train' },
+      { id: 'out', label: 'Tap out at your destination' },
+    ],
+    correctOrder: ['plan', 'in', 'ride', 'out'],
+    explanation:
+      'A little route-planning before you tap in saves you from doubling back — the MRT map and apps like Citymapper or Google Maps make this quick.',
+    xp: 15,
+    difficulty: 2,
+  },
+  {
+    id: 'move-l7-c1',
+    lessonId: 'move-l7',
+    type: 'multiple-choice',
+    category: 'gettingAround',
+    scene: 'train',
+    context: "It's 8:30am on a weekday and the train is packed.",
+    prompt: "What's a locally-accepted approach?",
+    options: [
+      {
+        id: 'a',
+        label:
+          'Let alighting passengers exit first, then board and move inward',
+      },
+      { id: 'b', label: 'Push in as soon as doors open' },
+      { id: 'c', label: 'Stand right at the doors and refuse to move in' },
+      { id: 'd', label: 'Wait for a completely empty train' },
+    ],
+    correctOptionId: 'a',
+    explanation:
+      "'Let passengers exit before boarding' is announced at every station for a reason — and moving inward makes room for the next stop's crowd too.",
+    xp: 10,
+    difficulty: 2,
+  },
+  {
+    id: 'move-l8-c1',
+    lessonId: 'move-l8',
+    type: 'scenario-decision',
+    category: 'gettingAround',
+    scene: 'train',
+    context:
+      'An elderly uncle boards and all the priority seats are taken by younger passengers.',
+    prompt: "What's the generally expected norm?",
+    options: [
+      { id: 'a', label: 'Offer your seat, especially a priority one' },
+      { id: 'b', label: 'Seats are first-come first-served, always' },
+      { id: 'c', label: 'Ask him to wait for the next train' },
+      { id: 'd', label: 'Point at the priority seating sign and nothing else' },
+    ],
+    correctOptionId: 'a',
+    explanation:
+      'Priority seats are meant for elderly, pregnant, or less mobile passengers — offering one is a small, expected courtesy, not a big gesture.',
+    xp: 15,
+    difficulty: 2,
+  },
+  {
+    id: 'move-l8-c2',
+    lessonId: 'move-l8',
+    type: 'culture-card',
+    category: 'gettingAround',
+    scene: 'none',
+    prompt: 'Getting around is mostly muscle memory',
+    body: "Tap in, tap out, stand left, let people off first. Singapore's transport system rewards a little courtesy and a little planning — once the habits click, the whole city opens up.",
+    explanation:
+      'Public transport here is fast, cheap, and (mostly) on time — the etiquette is what keeps it that way at scale.',
+    xp: 5,
+    difficulty: 1,
+  },
+];

@@ -1,0 +1,202 @@
+import type { Challenge } from '@/content/types';
+
+export const speakChallenges: Challenge[] = [
+  {
+    id: 'speak-l1-c1',
+    lessonId: 'speak-l1',
+    type: 'can-cannot',
+    category: 'lingo',
+    scene: 'chat',
+    context: 'Your colleague asks if you can push a meeting to 3pm.',
+    prompt: "Would a Singaporean typically reply 'can' to this?",
+    options: [
+      { id: 'can', label: 'Can' },
+      { id: 'cannot', label: 'Cannot' },
+    ],
+    correctOptionId: 'can',
+    explanation:
+      "'Can' is one of the most versatile words in Singlish — it means yes, sure, no problem. It's used constantly in both casual and semi-formal settings.",
+    xp: 10,
+    difficulty: 1,
+  },
+  {
+    id: 'speak-l1-c2',
+    lessonId: 'speak-l1',
+    type: 'scenario-decision',
+    category: 'lingo',
+    scene: 'hawker',
+    context:
+      "You spot a free-looking seat at a hawker centre, but there's a packet of tissues sitting on it.",
+    prompt: "What's the local norm here?",
+    options: [
+      { id: 'a', label: "Sit there — it looks free" },
+      { id: 'b', label: "Don't sit — it's already reserved" },
+      { id: 'c', label: 'Move the tissues aside and sit anyway' },
+    ],
+    correctOptionId: 'b',
+    explanation:
+      "A packet of tissues (or umbrella) left on a seat is a widely understood signal in Singapore — it means the seat is 'choped' (reserved). Best to find another spot.",
+    xp: 10,
+    difficulty: 1,
+  },
+  {
+    id: 'speak-l2-c1',
+    lessonId: 'speak-l2',
+    type: 'multiple-choice',
+    category: 'lingo',
+    scene: 'chat',
+    prompt: "Complete the sentence naturally: 'Wait for me ___, almost there!'",
+    options: [
+      { id: 'a', label: 'lah' },
+      { id: 'b', label: 'leh' },
+      { id: 'c', label: 'lor' },
+      { id: 'd', label: 'hor' },
+    ],
+    correctOptionId: 'a',
+    explanation:
+      "'Lah' softens a statement and adds emphasis or reassurance — it's one of the most common and flexible Singlish particles.",
+    xp: 10,
+    difficulty: 1,
+  },
+  {
+    id: 'speak-l2-c2',
+    lessonId: 'speak-l2',
+    type: 'pick-reply',
+    category: 'lingo',
+    scene: 'chat',
+    chatThread: [
+      {
+        from: 'them',
+        text: 'Eh, movie got later showing leh, wanna catch that one instead?',
+      },
+    ],
+    prompt: 'Pick the reply that sounds most natural.',
+    options: [
+      { id: 'a', label: 'Okay lah, you decide.' },
+      { id: 'b', label: 'Okay leh, you decide.' },
+      { id: 'c', label: 'Okay lor, you decide.' },
+      { id: 'd', label: 'Okay meh, you decide.' },
+    ],
+    correctOptionId: 'c',
+    explanation:
+      "'Lor' often signals easy, resigned acceptance — a shrug turned into a word. It fits well when you're going along with something without much fuss.",
+    xp: 10,
+    difficulty: 2,
+  },
+  {
+    id: 'speak-l3-c1',
+    lessonId: 'speak-l3',
+    type: 'match',
+    category: 'lingo',
+    scene: 'chat',
+    prompt: 'Match each word to what it usually means.',
+    pairs: [
+      { id: 'makan', left: 'Makan', right: 'To eat / food' },
+      { id: 'shiok', left: 'Shiok', right: 'Really satisfying, great' },
+      { id: 'paiseh', left: 'Paiseh', right: 'Embarrassed, shy' },
+      { id: 'alamak', left: 'Alamak', right: 'Oh no! (dismay, surprise)' },
+    ],
+    explanation:
+      "These four show up constantly in daily conversation — you'll hear them well before you'd ever need to say them yourself, which is exactly the point: understanding first.",
+    xp: 15,
+    difficulty: 2,
+  },
+  {
+    id: 'speak-l3-c2',
+    lessonId: 'speak-l3',
+    type: 'multiple-choice',
+    category: 'lingo',
+    scene: 'street',
+    context: "A friend takes a bite of durian and says it's 'shiok'.",
+    prompt: 'What are they telling you?',
+    options: [
+      { id: 'a', label: "It's really good / satisfying" },
+      { id: 'b', label: "It's expensive" },
+      { id: 'c', label: "It's too spicy" },
+      { id: 'd', label: "It's fake / imitation" },
+    ],
+    correctOptionId: 'a',
+    explanation:
+      "'Shiok' expresses enjoyment or satisfaction — great food, a cool breeze, a good deal. Almost anything genuinely pleasing can be 'shiok'.",
+    xp: 10,
+    difficulty: 1,
+  },
+  {
+    id: 'speak-l4-c1',
+    lessonId: 'speak-l4',
+    type: 'scenario-decision',
+    category: 'lingo',
+    scene: 'queue',
+    context:
+      'A new bubble tea shop opens and a long queue forms within minutes — even though there was no announcement of a limited deal.',
+    prompt: 'What might locals jokingly call this behaviour?',
+    options: [
+      { id: 'a', label: 'Kiasu' },
+      { id: 'b', label: 'Blur' },
+      { id: 'c', label: 'Steady' },
+      { id: 'd', label: 'Paiseh' },
+    ],
+    correctOptionId: 'a',
+    explanation:
+      "'Kiasu' (literally 'afraid to lose out') describes the urge to grab a good deal or be first in line. It's often self-deprecating humour rather than a real criticism.",
+    xp: 15,
+    difficulty: 2,
+  },
+  {
+    id: 'speak-l4-c2',
+    lessonId: 'speak-l4',
+    type: 'pick-reply',
+    category: 'lingo',
+    scene: 'chat',
+    chatThread: [
+      {
+        from: 'them',
+        text: 'Wait which platform ah? I confirm plus chop forgot already, lol.',
+      },
+    ],
+    prompt: 'Pick how you might tease them, lightheartedly, using the right word.',
+    options: [
+      { id: 'a', label: 'Wah you very blur today ah' },
+      { id: 'b', label: "You're so stupid" },
+      { id: 'c', label: 'Wah you very kiasu today ah' },
+      { id: 'd', label: 'Wah you very shiok today ah' },
+    ],
+    correctOptionId: 'a',
+    explanation:
+      "'Blur' means confused, out of the loop, or a bit dazed. It's usually said affectionately rather than as a real put-down — using it here keeps the tone light instead of harsh.",
+    xp: 15,
+    difficulty: 2,
+  },
+  {
+    id: 'speak-l5-c1',
+    lessonId: 'speak-l5',
+    type: 'sort',
+    category: 'lingo',
+    scene: 'chat',
+    prompt: 'Put this casual conversation into the natural order.',
+    items: [
+      { id: 'a', label: 'Eh, you free tonight?' },
+      { id: 'b', label: 'Can! What time?' },
+      { id: 'c', label: 'Around 7 lah' },
+      { id: 'd', label: 'Steady, see you then!' },
+    ],
+    correctOrder: ['a', 'b', 'c', 'd'],
+    explanation:
+      "A casual invite → quick 'can' → a time, tossed off with 'lah' → a confirming 'steady'. Short, low-friction, and very typical.",
+    xp: 15,
+    difficulty: 2,
+  },
+  {
+    id: 'speak-l5-c2',
+    lessonId: 'speak-l5',
+    type: 'culture-card',
+    category: 'lingo',
+    scene: 'none',
+    prompt: 'Singlish is not "broken English"',
+    body: "Singlish blends English with Malay, Hokkien, Tamil, and more — it's a distinct way of speaking, not a mistake. You don't need to speak it yourself. Understanding it when you hear it will get you further, faster.",
+    explanation:
+      "Locals code-switch fluidly between Singlish and standard English depending on context — both are 'correct' for their setting.",
+    xp: 5,
+    difficulty: 1,
+  },
+];
