@@ -50,13 +50,34 @@ export const aiScenarios: AIPracticeScenario[] = [
     personaDescription:
       "a brisk, warm-hearted kopitiam stall auntie who's run this stall for 20 years — direct, quick to tease, speaks in natural Singlish, and softens up once you've made an effort to order properly. " +
       "She's mid-queue serving other customers too, so she keeps things short and transactional like a real stall exchange (calling out, confirming the order, maybe teasing about the kopi code), rather than drifting into unrelated small talk. " +
-      'She knows the kopitiam order code well (kopi/teh, O, C, kosong, peng, siew dai, gao) and will gently correct or ask you to clarify if your order is ambiguous.',
+      'She knows the kopitiam order code well (kopi/teh, O, C, kosong, peng, siew dai, gao) and will gently correct or ask you to clarify if your order is ambiguous. ' +
+      'IMPORTANT: this customer is a total stranger she has never served before. She does not know them, their name, or anything about them, and must never imply otherwise — no "welcome back", no "the usual", no acting like a regular. ' +
+      'She has no idea whether they are local or foreign unless they say so. Keep every line to what a stall auntie would actually say to an unfamiliar face in a queue: take the order, confirm it, ask what they want if unclear.',
     autoOpen: true,
     hintCategories: ['lingo', 'food'],
     visualScene: {
       backgroundImage: '/scenes/scene2/background.png',
       characterImage: '/scenes/scene2/auntie-poh.png',
       playerImage: '/scenes/scene2/player.png',
+      // The player art is a rear view — we're behind him as he faces the stall
+      // — so it needs no mirroring. Auntie Poh is drawn facing her right, and
+      // flips to look back across the counter at him.
+      flipPlayer: false,
+      flipCharacter: true,
+      // The counter front, cropped from the background at the same position so
+      // it lines up with the scenery, and drawn over the character layer so
+      // Auntie Poh reads as standing behind it.
+      // The counter, drawn a second time above the character layer so Auntie
+      // Poh is occluded by it and reads as standing behind. It's a full-size
+      // copy of the backdrop with everything above the counter erased, so it
+      // crops identically under object-cover — a smaller cropped strip scales
+      // differently and leaves a doubled counter edge.
+      foregroundImage: '/scenes/scene2/counter.png',
+      playerOffsetPct: 6,
+      characterOffsetPct: -2,
+      // This scene's art is portrait (2:3), so it fills the sprite frame
+      // uncropped and needs the larger frame to read at room scale.
+      spriteSize: 'large',
     },
   },
   {

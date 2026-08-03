@@ -2,17 +2,14 @@
   "name": "sg-mode-monorepo",
   "private": true,
   "version": "0.0.0",
-  "workspaces": [
-    "apps/*"
-  ],
   "scripts": {
-    "dev": "concurrently -n server,web -c green,blue \"npm run dev -w server\" \"npm run dev -w web\"",
-    "dev:web": "npm run dev -w web",
-    "dev:server": "npm run dev -w server",
-    "build": "npm run build -w web && npm run build -w server",
-    "test": "npm run test -w web",
-    "test:e2e": "npm run test:e2e -w web",
-    "lint": "npm run lint -w web"
+    "dev": "concurrently -n server,web -c green,blue \"pnpm --filter server run dev\" \"pnpm --filter web run dev\"",
+    "build": "pnpm --filter web run build && pnpm --filter server run build",
+    "dev:server": "pnpm --filter server run dev",
+    "dev:web": "pnpm --filter web run dev",
+    "lint": "pnpm --filter web run lint",
+    "test": "pnpm --filter web run test",
+    "test:e2e": "pnpm --filter web run test:e2e"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

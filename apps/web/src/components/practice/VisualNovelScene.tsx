@@ -85,10 +85,24 @@ function TypingSpeechBubble() {
 /** Crops a sprite's baked-in padding by scaling it to cover a tight portrait
  * frame, so characters read as standing close together instead of adrift in
  * empty canvas space. */
+/** Sprite frame sizes. `default` suits scene art drawn landscape, where
+ * object-cover crops inward and effectively zooms the figure. Portrait (2:3)
+ * art fills the frame uncropped and so reads much smaller at the same box —
+ * `large` compensates so those characters still read as standing in the room. */
+const SPRITE_SIZES = {
+  default: 'h-32 w-20 sm:h-44 sm:w-28 lg:h-56 lg:w-36',
+  /** Kept close to 2:3 so portrait sprite art fills the frame without
+   * object-cover shaving the sides off the figure. */
+  large: 'h-40 w-[6.7rem] sm:h-56 sm:w-[9.3rem] lg:h-72 lg:w-48',
+} as const;
+
+export type SpriteSize = keyof typeof SPRITE_SIZES;
+
 function CharacterSprite({
   src,
   alt,
   flip,
+  size = 'default',
   initial,
   animate,
   transition,
@@ -96,6 +110,7 @@ function CharacterSprite({
   src: string;
   alt: string;
   flip?: boolean;
+  size?: SpriteSize;
   initial: { opacity: number; x: number; y: number };
   animate: { opacity: number; x: number; y: number };
   transition: object;
@@ -105,7 +120,7 @@ function CharacterSprite({
       initial={initial}
       animate={animate}
       transition={transition}
-      className="h-32 w-20 overflow-hidden drop-shadow-xl sm:h-44 sm:w-28 lg:h-56 lg:w-36"
+      className={clsx('overflow-hidden drop-shadow-xl', SPRITE_SIZES[size])}
     >
       <img
         src={src}
@@ -231,12 +246,22 @@ export function VisualNovelScene({
     }
   }, [phase, onSessionComplete]);
 
-  const spriteInitial = (fromSide: 'left' | 'right') =>
+  // A character standing behind the foreground counter rests lower than the
+  // front floor line, so the overlay hides their lower body. Expressed as a %
+  // of sprite height and folded into the animation's resting `y` — an inline
+  // transform would be clobbered by Framer Motion's own.
+  const restingY = (offsetPct?: number) => (offsetPct ? `${offsetPct}%` : 0);
+
+  const spriteInitial = (fromSide: 'left' | 'right', offsetPct?: number) =>
     reduceMotion
-      ? { opacity: 1, x: 0, y: 0 }
+      ? { opacity: 1, x: 0, y: restingY(offsetPct) }
       : { opacity: 0, x: fromSide === 'left' ? -40 : 40, y: 24 };
 
-  const standingAnimate = { opacity: 1, x: 0, y: 0 };
+  const standingAnimate = (offsetPct?: number) => ({
+    opacity: 1,
+    x: 0,
+    y: restingY(offsetPct),
+  });
   const walkingOffAnimate = reduceMotion
     ? { opacity: 0, x: 0, y: 0 }
     : { opacity: 0, x: 0, y: -36 };
@@ -249,7 +274,11 @@ export function VisualNovelScene({
   const walkingTransition = { duration: reduceMotion ? 0.2 : 0.9 };
 
   const hasWalkedOff = phase === 'walking' || phase === 'complete';
-  const spriteAnimate = hasWalkedOff ? walkingOffAnimate : standingAnimate;
+  const spriteAnimate = (offsetPct?: number) =>
+    hasWalkedOff ? walkingOffAnimate : standingAnimate(offsetPct);
+
+  const flipPlayer = visualScene.flipPlayer ?? true;
+  const wideSpread = visualScene.spread === 'wide';
 
   return (
     <div className="overflow-hidden rounded-3xl bg-white shadow-card">
@@ -272,8 +301,21 @@ export function VisualNovelScene({
           <History className="size-4.5" />
         </button>
 
-        <div className="absolute inset-x-0 bottom-0 flex items-end justify-center gap-3 px-5 pb-2 sm:gap-6 sm:px-6 sm:pb-4 lg:gap-8 lg:px-8">
-          <div className="relative flex flex-col items-center">
+        <div
+          className={clsx(
+            'absolute inset-x-0 bottom-0 flex items-end pb-2 sm:pb-4',
+            wideSpread
+              ? // Inset from the frame edges so the characters sit in the open
+                // middle of the counter rather than on top of the props
+                // stacked at either end.
+                'justify-between px-[12%] sm:px-[14%] lg:px-[16%]'
+              : 'justify-center gap-3 px-5 sm:gap-6 sm:px-6 lg:gap-8 lg:px-8',
+          )}
+        >
+          {/* z-20 lifts the player above the foreground overlay (z-10), so a
+              scene can put the persona behind a counter while the player
+              stands in front of it — the two sides of a stall transaction. */}
+          <div className="relative z-20 flex flex-col items-center">
             {/* pr-* pulls the bubble's anchor further from center than the
                 character gap alone, so two simultaneous bubbles never sit
                 close enough to visually merge into one white shape. */}
@@ -288,16 +330,19 @@ export function VisualNovelScene({
               <CharacterSprite
                 src={visualScene.playerImage}
                 alt="You"
-                flip
-                initial={spriteInitial('left')}
-                animate={spriteAnimate}
+                flip={flipPlayer}
+                size={visualScene.spriteSize}
+                initial={spriteInitial('left', visualScene.playerOffsetPct)}
+                animate={spriteAnimate(visualScene.playerOffsetPct)}
                 transition={hasWalkedOff ? walkingTransition : standingTransition(0.15)}
               />
             )}
           </div>
 
           <div className="relative flex flex-col items-center">
-            <div className="absolute inset-x-0 bottom-full mb-2 pl-3 sm:pl-4 lg:pl-6">
+            {/* z-30 keeps the bubble above the foreground overlay even though
+                the sprite below it sits behind that overlay. */}
+            <div className="absolute inset-x-0 bottom-full z-30 mb-2 pl-3 sm:pl-4 lg:pl-6">
               <AnimatePresence mode="popLayout">
                 {phase === 'chat' && isTyping ? (
                   <TypingSpeechBubble />
@@ -314,8 +359,10 @@ export function VisualNovelScene({
             <CharacterSprite
               src={visualScene.characterImage}
               alt={personaName ?? 'Classmate'}
-              initial={spriteInitial('right')}
-              animate={spriteAnimate}
+              flip={visualScene.flipCharacter}
+              size={visualScene.spriteSize}
+              initial={spriteInitial('right', visualScene.characterOffsetPct)}
+              animate={spriteAnimate(visualScene.characterOffsetPct)}
               transition={hasWalkedOff ? walkingTransition : standingTransition(0.3)}
             />
           </div>
@@ -333,7 +380,7 @@ export function VisualNovelScene({
                 src={visualScene.teacherImage}
                 alt={completionScript?.teacherName ?? 'Teacher'}
                 initial={reduceMotion ? { opacity: 1, x: 0, y: 0 } : { opacity: 0, x: 60, y: 10 }}
-                animate={spriteAnimate}
+                animate={spriteAnimate()}
                 transition={
                   hasWalkedOff ? walkingTransition : { type: 'spring', stiffness: 120, damping: 18 }
                 }
@@ -341,6 +388,21 @@ export function VisualNovelScene({
             </div>
           )}
         </div>
+
+        {/* Drawn after the character row so it paints over it: a character
+            pushed down by *OffsetPct is hidden from the waist down and reads
+            as standing behind this, which depth in the background art alone
+            can't achieve (sprites always render above the background). */}
+        {visualScene.foregroundImage && (
+          <motion.img
+            src={visualScene.foregroundImage}
+            alt=""
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6 }}
+            className="pointer-events-none absolute inset-0 z-10 size-full object-cover"
+          />
+        )}
       </div>
 
       <AnimatePresence>

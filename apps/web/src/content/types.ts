@@ -155,6 +155,31 @@ export interface AIPracticeVisualScene {
   playerImage?: string;
   /** Sprite for the scripted-ending character (e.g. the teacher). Absent = no scripted ending. */
   teacherImage?: string;
+  /** Mirrors the player sprite so they face inward, toward the persona. Defaults
+   * to true: sprites are drawn facing right, and the player stands on the left.
+   * Set false when the player art is already drawn facing right-to-left. */
+  flipPlayer?: boolean;
+  /** Mirrors the persona sprite. Defaults to false, since a persona on the
+   * right is normally drawn already facing left, toward the player. */
+  flipCharacter?: boolean;
+  /** A foreground strip (e.g. a stall counter front) drawn ABOVE the character
+   * layer, so characters standing behind it are occluded from the waist down.
+   * Depth in the background art alone can't do this — sprites always render
+   * over the background, so the occluding element needs its own layer. */
+  foregroundImage?: string;
+  /** How far to push each character down, as a percentage of their own height,
+   * so they sit behind `foregroundImage` instead of on top of it. Applied only
+   * to the named character; the other stays on the front floor line. */
+  characterOffsetPct?: number;
+  playerOffsetPct?: number;
+  /** Extra horizontal separation between the two characters, in Tailwind's
+   * spacing scale, for scenes where they stand at opposite ends of a counter
+   * rather than side by side. */
+  spread?: 'default' | 'wide';
+  /** Sprite frame size. Landscape (3:2) art is cropped inward by object-cover
+   * and so reads large at the default size; portrait (2:3) art fills the frame
+   * uncropped and needs 'large' to read at a comparable scale. */
+  spriteSize?: 'default' | 'large';
 }
 
 /** The scripted cutscene that closes out a visual-scene practice session,

@@ -61,9 +61,13 @@ function buildSystemPrompt(
   } = body;
 
   return [
+    // Deliberately describes the role only, not the learner. Framing this as
+    // "helping someone new to the country" made every persona play the warm
+    // helper who already knows the player — a stall holder greeting a stranger
+    // like a regular. The persona's own description sets the relationship.
     personaName
-      ? `You are role-playing as ${personaName}, ${personaDescription ?? 'a friendly young Singaporean'}, helping someone new to the country practice a casual conversation.`
-      : 'You are role-playing as a friendly young Singaporean helping someone new to the country practice a casual conversation.',
+      ? `You are role-playing as ${personaName}, ${personaDescription ?? 'a friendly young Singaporean'}. Stay entirely in that role.`
+      : 'You are role-playing as a friendly young Singaporean. Stay entirely in that role.',
     schoolName ? `You both attend ${schoolName}${className ? `, in ${className}` : ''}.` : '',
     teacherName
       ? `Your teacher is ${teacherName} — refer to her by name if the conversation naturally calls for it, but don't force it in.`
