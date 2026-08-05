@@ -40,9 +40,14 @@ function buildVocabularyRule(unlockedWords: string[] | undefined): string {
     return "The learner hasn't unlocked any Singlish terms yet — speak in plain, clear English only, with no Singlish particles or slang for now.";
   }
   return (
-    `The learner has only unlocked these Singlish terms so far, in this order: ${unlockedWords.join(', ')}. ` +
-    'Weave in ONE of these naturally every so often when it genuinely fits — not in every single line, that would feel forced. ' +
-    "Never use any Singlish term or particle that isn't in that list, even common ones — the learner hasn't been taught them yet and it would confuse them."
+    `The learner has been taught these Singlish terms so far: ${unlockedWords.join(', ')}. ` +
+    'Weave one of these in naturally every so often when it genuinely fits — not in every line, which would feel forced. ' +
+    // Previously this banned every unlisted term outright, which stripped the
+    // personas of the sentence-final particles that make them sound Singaporean
+    // at all. The distinction that matters is between particles a learner can
+    // absorb from context and vocabulary they would have to look up.
+    'You may also use the common sentence-final particles (lah, leh, lor, ah, hor, meh, sia) where they fit your character, since these carry tone rather than meaning and are understandable from context. ' +
+    "Avoid Singlish nouns, verbs or idioms outside the taught list, though — those carry meaning the learner hasn't been given yet. If your character would naturally use one, either say it and immediately make the meaning obvious from context, or use the plain English equivalent instead."
   );
 }
 
@@ -72,11 +77,15 @@ function buildSystemPrompt(
     teacherName
       ? `Your teacher is ${teacherName} — refer to her by name if the conversation naturally calls for it, but don't force it in.`
       : '',
+    // Scenario before the style rules: the model anchors much better on what
+    // this exchange is *for* when it reads the situation first.
+    context ? `The situation: ${context}` : '',
     'Reply in 1-2 short, natural sentences, in character, and never break character or mention that you are an AI.',
+    'Respond to what the other person actually said rather than giving a generic line, and keep the exchange moving toward whatever this situation is about — do not stall by asking vague questions or repeating yourself.',
+    'Vary how you speak: do not open consecutive messages the same way, and do not restate something you have already said.',
     buildVocabularyRule(unlockedWords),
-    context ? `Scenario: ${context}` : '',
     opening
-      ? 'This is the very start of the conversation — send the first message yourself: a short, natural, friendly greeting in character. Do not wait for the other person to speak first.'
+      ? 'This is the very start of the conversation — send the first message yourself: a short, natural greeting that fits your role and this exact situation. Do not wait for the other person to speak first, and do not greet them as though you already know them unless your role says you do.'
       : '',
   ]
     .filter(Boolean)
@@ -197,10 +206,20 @@ aiPracticeRouter.post('/suggestions', async (req, res) => {
   const systemPrompt = [
     buildSystemPrompt(body),
     "Now switch roles: instead of replying, suggest what the OTHER person (the learner you're talking to) could say next.",
-    'Give exactly 3 reply options, each a complete, natural sentence a real person would actually type (roughly 5-15 words) — never a clipped fragment or a phrase that trails off. Each should take a distinct angle (e.g. one answers directly, one asks a follow-up question, one jokes or deflects) so they feel genuinely different from each other, not three rewordings of the same idea.',
+    'Give exactly 3 reply options, each a complete, natural sentence a real person would actually type (roughly 5-15 words) — never a clipped fragment or a phrase that trails off.',
+    // Without this the model free-associates: generic small talk in a scene
+    // that is actually a drink order, and options that ignore what was just
+    // said. Anchoring to the scenario's goal and the persona's last line is
+    // what makes the three feel like real things to say *here*.
+    "Every option must be a direct, sensible response to the persona's most recent message and must move the scenario toward its goal. Read the scenario description above and treat that goal as what the learner is trying to accomplish.",
+    'Make the 3 genuinely different from each other — different intentions, not three rewordings of one idea. Fit the angles to the situation rather than a fixed formula: in a transactional exchange (ordering, paying, asking directions) offer things like stating a choice, asking a clarifying question, or requesting a change; in a social chat offer things like answering, asking something back, or reacting with an opinion. Never suggest a joke or a deflection where it would be out of place.',
+    'Write them in the learner\'s own voice as a newcomer — polite, natural, and never presuming familiarity the learner does not have with the persona.',
+    // Stricter than the persona's own rule on purpose: these are lines the
+    // learner is about to say, so they should stretch only as far as what has
+    // actually been taught.
     unlockedWords && unlockedWords.length > 0
-      ? `Exactly one of the 3 options should naturally work in one of these Singlish terms the learner already knows: ${unlockedWords.join(', ')}. The other two should be plain English, no Singlish. Never use a Singlish term outside that list.`
-      : 'The learner hasn\'t unlocked any Singlish terms yet, so write all 3 options in plain English only, no Singlish.',
+      ? `Exactly one of the 3 options should naturally work in one of these Singlish terms the learner already knows: ${unlockedWords.join(', ')}. The other two should be plain English. Never put a Singlish word outside that list into the learner's mouth.`
+      : "The learner hasn't been taught any Singlish terms yet, so write all 3 options in plain, natural English.",
     'Respond with ONLY a JSON array of exactly 3 strings — no other text, no markdown.',
   ]
     .filter(Boolean)

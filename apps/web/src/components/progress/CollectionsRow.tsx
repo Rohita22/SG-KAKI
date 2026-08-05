@@ -26,7 +26,7 @@ function CollectionTile({
 
   if (!to) {
     return (
-      <div className="flex flex-1 flex-col items-center gap-1.5 rounded-2xl bg-white p-4 text-center shadow-card">
+      <div className="flex flex-1 flex-col items-center gap-1.5 rounded-2xl border border-white/60 bg-white/80 p-4 text-center shadow-card backdrop-blur-md">
         {content}
       </div>
     );
@@ -36,7 +36,7 @@ function CollectionTile({
     <button
       type="button"
       onClick={() => navigate(to, tab ? { state: { tab } } : undefined)}
-      className="flex flex-1 flex-col items-center gap-1.5 rounded-2xl bg-white p-4 text-center shadow-card transition-transform active:scale-[0.98]"
+      className="flex flex-1 flex-col items-center gap-1.5 rounded-2xl border border-white/60 bg-white/80 p-4 text-center shadow-card backdrop-blur-md transition-transform active:scale-[0.98]"
     >
       {content}
     </button>

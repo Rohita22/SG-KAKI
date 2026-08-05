@@ -16,7 +16,7 @@ export function ProgressStatsCard({
   streakDays,
 }: ProgressStatsCardProps) {
   return (
-    <div className="rounded-3xl bg-white p-5 shadow-card">
+    <div className="rounded-3xl border border-white/60 bg-white/80 p-5 shadow-card backdrop-blur-md">
       <p className="text-xs font-bold uppercase tracking-wide text-sg-navy/40">
         Your Standing
       </p>

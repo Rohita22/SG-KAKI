@@ -191,9 +191,16 @@ export interface AIPracticeCompletionScript {
   /** Hard cap: the ending triggers automatically at this many turns even
    * without an AI-detected natural pause, so the scene can't run forever. */
   maxTurns: number;
-  teacherName: string;
-  teacherLine: string;
+  /** The arriving third character who triggers the ending (e.g. a teacher
+   * entering the classroom). Omit for scenes that close on the persona alone —
+   * a stall holder handing over an order needs no one else to walk in. */
+  teacherName?: string;
+  teacherLine?: string;
+  /** The persona's closing line, delivered as the scene wraps up. */
   classmateLine: string;
+  /** Replaces the "Class is starting…" interstitial shown while the ending
+   * plays out. */
+  closingCaption?: string;
 }
 
 export interface AIPracticeScenario {

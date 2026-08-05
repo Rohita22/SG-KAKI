@@ -214,14 +214,17 @@ export function VisualNovelScene({
   // turn count — minTurns keeps it from ending too abruptly, maxTurns is a
   // hard cap so the scene can't run forever if the AI never signals it.
   useEffect(() => {
-    if (phase !== 'chat' || !completionScript || !visualScene.teacherImage || isTyping) {
+    if (phase !== 'chat' || !completionScript || isTyping) {
       return;
     }
     const reachedMin = turnCount >= completionScript.minTurns;
     const reachedMax = turnCount >= completionScript.maxTurns;
     if (!((reachedMin && readyToEnd) || reachedMax)) return;
 
-    const timer = setTimeout(() => setPhase('teacherEnter'), 900);
+    // Scenes without an arriving third character skip straight to the persona's
+    // closing line — there's no one to walk in and interrupt.
+    const firstPhase = visualScene.teacherImage ? 'teacherEnter' : 'classmateReacts';
+    const timer = setTimeout(() => setPhase(firstPhase), 900);
     return () => clearTimeout(timer);
   }, [phase, completionScript, visualScene.teacherImage, isTyping, turnCount, readyToEnd]);
 
@@ -274,8 +277,12 @@ export function VisualNovelScene({
   const walkingTransition = { duration: reduceMotion ? 0.2 : 0.9 };
 
   const hasWalkedOff = phase === 'walking' || phase === 'complete';
-  const spriteAnimate = (offsetPct?: number) =>
-    hasWalkedOff ? walkingOffAnimate : standingAnimate(offsetPct);
+  // In a scene that ends with someone arriving, everyone clears out together.
+  // Where the persona is staff at their own stall, only the player leaves —
+  // the stall holder stays put, serving the next person in the queue.
+  const personaStaysPut = !visualScene.teacherImage;
+  const spriteAnimate = (offsetPct?: number, staysPut = false) =>
+    hasWalkedOff && !staysPut ? walkingOffAnimate : standingAnimate(offsetPct);
 
   const flipPlayer = visualScene.flipPlayer ?? true;
   const wideSpread = visualScene.spread === 'wide';
@@ -362,7 +369,7 @@ export function VisualNovelScene({
               flip={visualScene.flipCharacter}
               size={visualScene.spriteSize}
               initial={spriteInitial('right', visualScene.characterOffsetPct)}
-              animate={spriteAnimate(visualScene.characterOffsetPct)}
+              animate={spriteAnimate(visualScene.characterOffsetPct, personaStaysPut)}
               transition={hasWalkedOff ? walkingTransition : standingTransition(0.3)}
             />
           </div>
@@ -371,7 +378,7 @@ export function VisualNovelScene({
             <div className="relative flex flex-col items-center">
               <div className="absolute inset-x-0 bottom-full mb-2 pl-3 sm:pl-4 lg:pl-6">
                 <AnimatePresence mode="popLayout">
-                  {phase === 'teacherEnter' && completionScript && (
+                  {phase === 'teacherEnter' && completionScript?.teacherLine && (
                     <SpeechBubble key="teacher-line" text={completionScript.teacherLine} anchor="left" />
                   )}
                 </AnimatePresence>
@@ -445,7 +452,7 @@ export function VisualNovelScene({
         </div>
       ) : phase !== 'chat' ? (
         <div className="border-t border-black/5 px-5 py-4 text-center text-sm font-semibold text-sg-navy/50">
-          Class is starting…
+          {completionScript?.closingCaption ?? 'Class is starting…'}
         </div>
       ) : (
         <ConversationControls

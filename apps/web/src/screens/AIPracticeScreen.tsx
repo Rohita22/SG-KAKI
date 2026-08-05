@@ -54,7 +54,10 @@ export function AIPracticeScreen() {
 
   const turnCount = history.filter((m) => m.role === 'user').length;
   const stepCount = Math.min(4, turnCount + 1);
-  const hasScriptedEnding = Boolean(scenario.visualScene?.teacherImage && scenario.completionScript);
+  // A scripted ending closes the session in-scene, so the manual "Finish"
+  // button below the stage would be a duplicate. Not gated on the arriving
+  // third character: a scene can close on the persona alone.
+  const hasScriptedEnding = Boolean(scenario.visualScene && scenario.completionScript);
   const canFinish =
     !hasScriptedEnding &&
     turnCount >= MIN_TURNS_TO_FINISH &&
