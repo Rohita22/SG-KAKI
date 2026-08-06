@@ -4,7 +4,10 @@ import { activeCountryPack } from '@/content/activeCountryPack';
 import { useProgress } from '@/state/useProgress';
 import { getUnlockedScenarioIds } from '@/game/aiScenarioUnlocks';
 import { Card } from '@/components/ui/Card';
+import { ScreenBackdrop } from '@/components/shell/ScreenBackdrop';
 import { clsx } from '@/lib/clsx';
+
+const HUB_BG_URL = '/images/field-guide-bg.png';
 
 export function AIPracticeHubScreen() {
   const { state } = useProgress();
@@ -15,18 +18,21 @@ export function AIPracticeHubScreen() {
   );
 
   return (
-    <div>
-      <div className="flex items-center gap-2">
-        <h1 className="text-xl font-extrabold text-sg-navy lg:text-2xl">AI Practice</h1>
-        <span className="rounded-full bg-sg-xp/20 px-2 py-0.5 text-[10px] font-black text-sg-navy">
-          BETA
-        </span>
-      </div>
-      <p className="mt-1 text-sm text-sg-navy/50">
-        Practice real conversations with an AI classmate — new scenarios unlock as you progress.
-      </p>
+    <div className="relative -mx-4 -my-5 min-h-full shrink-0 px-4 py-5 sm:-mx-6 sm:px-6 lg:-mx-10 lg:-my-8 lg:px-10 lg:py-8">
+      <ScreenBackdrop image={HUB_BG_URL} />
 
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="relative z-10">
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-extrabold text-sg-navy lg:text-2xl">AI Practice</h1>
+          <span className="rounded-full bg-sg-xp/20 px-2 py-0.5 text-[10px] font-black text-sg-navy">
+            BETA
+          </span>
+        </div>
+        <p className="mt-1 text-sm text-sg-navy/50">
+          Practice real conversations with an AI classmate — new scenarios unlock as you progress.
+        </p>
+
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {activeCountryPack.aiScenarios.map((scenario) => {
           const unlocked = unlockedIds.has(scenario.id);
           const gatingMission = activeCountryPack.missions.find(
@@ -60,7 +66,6 @@ export function AIPracticeHubScreen() {
             </Card>
           );
         })}
-      </div>
-    </div>
+      </div>      </div>    </div>
   );
 }

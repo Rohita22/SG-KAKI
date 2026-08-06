@@ -38,6 +38,9 @@ export function AIPracticeScreen() {
     readyToEnd,
     sendUserMessage,
     restart,
+    stage,
+    stageTurnCount,
+    resolveMinigamePick,
   } = useAIPractice(scenarioId ?? '');
   const [draft, setDraft] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -54,10 +57,22 @@ export function AIPracticeScreen() {
 
   const turnCount = history.filter((m) => m.role === 'user').length;
   const stepCount = Math.min(4, turnCount + 1);
+
+  // A staged scenario resolves its own visual scene/turn count per current
+  // stage rather than across the whole conversation — otherwise turns from
+  // earlier stages would trip the final stage's scripted ending early.
+  const isFinalStage =
+    !scenario.stages || (stage && scenario.stages[scenario.stages.length - 1].id === stage.id);
+  const sceneVisualScene = stage?.visualScene ?? scenario.visualScene;
+  const sceneTurnCount = stage ? stageTurnCount : turnCount;
+  // Only feed the scripted ending in once the final stage is reached — it's
+  // otherwise identical to `scenario.completionScript` every stage of the way.
+  const sceneCompletionScript = isFinalStage ? scenario.completionScript : undefined;
+
   // A scripted ending closes the session in-scene, so the manual "Finish"
   // button below the stage would be a duplicate. Not gated on the arriving
   // third character: a scene can close on the persona alone.
-  const hasScriptedEnding = Boolean(scenario.visualScene && scenario.completionScript);
+  const hasScriptedEnding = Boolean(sceneVisualScene && scenario.completionScript);
   const canFinish =
     !hasScriptedEnding &&
     turnCount >= MIN_TURNS_TO_FINISH &&
@@ -131,7 +146,7 @@ export function AIPracticeScreen() {
             What you're practicing
           </p>
           <ul className="mt-2 space-y-1.5">
-            {PRACTICE_SKILLS.map((skill) => (
+            {(scenario.skills || PRACTICE_SKILLS).map((skill) => (
               <li key={skill} className="flex items-center gap-2 text-sm text-sg-navy/70">
                 <span className="size-1.5 shrink-0 rounded-full bg-sg-blue" />
                 {skill}
@@ -150,19 +165,23 @@ export function AIPracticeScreen() {
         </div>
 
         <div>
-          {scenario.visualScene ? (
+          {sceneVisualScene ? (
             <VisualNovelScene
-              visualScene={scenario.visualScene}
+              visualScene={sceneVisualScene}
               personaName={scenario.personaName}
               history={history}
               isTyping={isTyping}
+              turnCount={sceneTurnCount}
               suggestions={suggestions}
               suggestionsLoading={suggestionsLoading}
               readyToEnd={readyToEnd}
               fallbackOpeners={scenario.suggestedOpeners}
               singlishHints={singlishHints}
-              completionScript={scenario.completionScript}
+              completionScript={sceneCompletionScript}
               completionXp={scenario.completionXp}
+              minigame={stage?.minigame}
+              onMinigamePick={resolveMinigamePick}
+              currentStageId={stage?.id}
               draft={draft}
               onDraftChange={setDraft}
               onSend={handleSend}

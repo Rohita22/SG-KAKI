@@ -1,24 +1,28 @@
 /**
- * A fixed, non-scrolling illustrated backdrop for a screen.
+ * A non-scrolling illustrated backdrop for a screen, pinned to the top of the
+ * viewport as the page content scrolls past it.
  *
- * Rendered inside the scrolling `<main>` but positioned `fixed`, so the art
- * stays pinned to the viewport while only the content moves — and the area
- * below the fold never scrolls past the bottom of the image into white.
- *
- * `left-64` clears the fixed-width sidebar (`w-64`) so the image spans exactly
- * the content column rather than sliding under the nav.
+ * Must be the first child of a `relative` ancestor that spans the full
+ * scrollable height of the screen (e.g. `min-h-full`) — the outer `absolute
+ * inset-0` sizes to that ancestor, and the inner `sticky` pins within it.
+ * Scoped to that ancestor's width rather than the viewport, so it always
+ * matches the content column regardless of the sidebar's collapsed/expanded
+ * width.
  */
 export function ScreenBackdrop({ image }: { image: string }) {
   return (
-    <div
-      className="pointer-events-none fixed inset-y-0 left-64 right-0 z-0"
-      aria-hidden="true"
-    >
-      <div
-        className="size-full bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(${image})` }}
-      />
-      <div className="absolute inset-0 bg-gradient-to-b from-[#FDFBF5]/85 via-[#FDFBF5]/55 to-[#FDFBF5]/35" />
+    <div className="pointer-events-none absolute inset-0 z-0" aria-hidden="true">
+      {/* overflow-hidden must live here, not on this div's parent — an
+          overflow-hidden ancestor becomes the nearest scroll container for
+          `sticky` purposes, which would anchor this to that (never-scrolled)
+          wrapper instead of the page's actual scrolling element. */}
+      <div className="sticky top-0 h-dvh w-full overflow-hidden">
+        <div
+          className="size-full bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: `url(${image})` }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#FDFBF5]/85 via-[#FDFBF5]/55 to-[#FDFBF5]/35" />
+      </div>
     </div>
   );
 }

@@ -10,9 +10,9 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 const FALLBACK_REPLY =
   "Hmm, having trouble connecting right now — mind trying that again in a moment?";
 
-function personaContext(scenario: AIPracticeScenario | undefined) {
+function personaContext(scenario: AIPracticeScenario | undefined, contextOverride?: string) {
   return {
-    context: scenario ? `${scenario.title}. ${scenario.setup}` : undefined,
+    context: contextOverride ?? (scenario ? `${scenario.title}. ${scenario.setup}` : undefined),
     personaName: scenario?.personaName,
     personaDescription: scenario?.personaDescription,
     schoolName: scenario?.schoolName,
@@ -51,12 +51,13 @@ export const groqAIPracticeService: AIPracticeService = {
     history: ChatMessage[],
     userMessage: string,
     unlockedWords: string[],
+    contextOverride?: string,
   ) {
     const scenario = activeCountryPack.aiScenarios.find((s) => s.id === scenarioId);
     const data = await postJson<{ reply?: string; endConversation?: boolean }>(
       '/api/ai-practice/message',
       {
-        ...personaContext(scenario),
+        ...personaContext(scenario, contextOverride),
         history: history.map((m) => ({ role: m.role, text: m.text })),
         message: userMessage,
         // Every scenario gets natural-ending detection, not just ones with a
@@ -73,20 +74,31 @@ export const groqAIPracticeService: AIPracticeService = {
     return reply;
   },
 
-  async startConversation(scenarioId: string, unlockedWords: string[]) {
+  async startConversation(
+    scenarioId: string,
+    unlockedWords: string[],
+    contextOverride?: string,
+    history: ChatMessage[] = [],
+  ) {
     const scenario = activeCountryPack.aiScenarios.find((s) => s.id === scenarioId);
     const data = await postJson<{ reply?: string }>('/api/ai-practice/message', {
-      ...personaContext(scenario),
+      ...personaContext(scenario, contextOverride),
       opening: true,
       unlockedWords,
+      history: history.map((m) => ({ role: m.role, text: m.text })),
     });
     return data?.reply ?? FALLBACK_REPLY;
   },
 
-  async getSuggestedReplies(scenarioId: string, history: ChatMessage[], unlockedWords: string[]) {
+  async getSuggestedReplies(
+    scenarioId: string,
+    history: ChatMessage[],
+    unlockedWords: string[],
+    contextOverride?: string,
+  ) {
     const scenario = activeCountryPack.aiScenarios.find((s) => s.id === scenarioId);
     const data = await postJson<{ suggestions?: string[] }>('/api/ai-practice/suggestions', {
-      ...personaContext(scenario),
+      ...personaContext(scenario, contextOverride),
       history: history.map((m) => ({ role: m.role, text: m.text })),
       unlockedWords,
     });

@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  /* SG MODE palette — modern, playful, trustworthy, energetic */
+  /* SG Kaki palette — modern, playful, trustworthy, energetic */
   /* Primary brand */
   --color-sg-navy: #0f172a;
   --color-sg-navy-light: #1e293b;
@@ -39,8 +39,8 @@
   --color-sg-text-secondary: #64748b;
   --color-sg-text-disabled: #94a3b8;
 
-  --font-display: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
-  --font-body: "Inter", system-ui, sans-serif;
+  --font-display: "Fredoka", system-ui, sans-serif;
+  --font-body: "Nunito", system-ui, sans-serif;
 
   --radius-xl: 1rem;
   --radius-2xl: 1.5rem;

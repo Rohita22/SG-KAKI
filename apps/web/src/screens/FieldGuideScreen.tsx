@@ -379,7 +379,7 @@ export function FieldGuideScreen() {
   const [filtersOpen, setFiltersOpen] = useState(true);
 
   return (
-    <div className="relative -mx-4 -my-5 min-h-full px-4 py-5 sm:-mx-6 sm:px-6 lg:-mx-10 lg:-my-8 lg:px-10 lg:py-8">
+    <div className="relative -mx-4 -my-5 min-h-full shrink-0 px-4 py-5 sm:-mx-6 sm:px-6 lg:-mx-10 lg:-my-8 lg:px-10 lg:py-8">
       <ScreenBackdrop image={FIELD_GUIDE_BG_URL} />
       <ScreenCornerArt image={CORNER_ART_URL} />
 

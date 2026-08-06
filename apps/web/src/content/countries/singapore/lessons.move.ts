@@ -322,14 +322,14 @@ export const moveLessons: Lesson[] = [
     challengeIds: ['move-l8-c1', 'move-l8-c2'],
     discover: [
       {
-        emoji: '🧩',
-        title: 'Let\'s put it together',
-        body: 'MRT, tap in/out, stand left, alight, Grab, which exit, peak hour — this challenge mixes them into one full commute.',
+        emoji: '🗺️',
+        title: 'A full commute, start to finish',
+        body: 'Tap in, stand left, alight at the right exit, dodge peak hour, Grab home late — this challenge runs you through a whole day of getting around.',
       },
       {
-        emoji: '🚇',
-        title: 'A quick refresher',
-        body: 'Tap in, tap out, stand left, let people off first. A little courtesy and a little planning is really the whole system.',
+        emoji: '⚙️',
+        title: 'Why it all just works',
+        body: 'None of it is complicated on its own — it\'s a system that runs on everyone doing the small, boring, courteous thing at the same time.',
       },
     ],
     phraseIds: ['mrt', 'grab'],

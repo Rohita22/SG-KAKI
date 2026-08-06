@@ -41,7 +41,8 @@ function buildVocabularyRule(unlockedWords: string[] | undefined): string {
   }
   return (
     `The learner has been taught these Singlish terms so far: ${unlockedWords.join(', ')}. ` +
-    'Weave one of these in naturally every so often when it genuinely fits — not in every line, which would feel forced. ' +
+    'The MAIN PURPOSE of this conversation is for the learner to practice these specific words. ' +
+    'You should actively create opportunities for them to use these words by asking relevant questions, and strongly encourage or validate them when they do use them successfully! ' +
     // Previously this banned every unlisted term outright, which stripped the
     // personas of the sentence-final particles that make them sound Singaporean
     // at all. The distinction that matters is between particles a learner can
@@ -53,6 +54,14 @@ function buildVocabularyRule(unlockedWords: string[] | undefined): string {
 
 function buildSystemPrompt(
   body: PersonaContext & { opening?: boolean; unlockedWords?: string[] },
+  /** True when `opening` is really "advance into a new beat of an ongoing
+   * conversation" (a staged scenario opening its 2nd+ stage) rather than
+   * the true first message — e.g. `history` was non-empty on an `opening`
+   * request. Without this, every stage-open reused the same "this is the
+   * very start, send a greeting" instruction, so persona lines for later
+   * stages routinely re-greeted the learner mid-conversation instead of
+   * continuing it. */
+  isContinuation = false,
 ): string {
   const {
     context,
@@ -85,7 +94,9 @@ function buildSystemPrompt(
     'Vary how you speak: do not open consecutive messages the same way, and do not restate something you have already said.',
     buildVocabularyRule(unlockedWords),
     opening
-      ? 'This is the very start of the conversation — send the first message yourself: a short, natural greeting that fits your role and this exact situation. Do not wait for the other person to speak first, and do not greet them as though you already know them unless your role says you do.'
+      ? isContinuation
+        ? 'You are already mid-conversation with this person, and the scene has just moved on to a new moment — treat "The situation" described above as what is happening RIGHT NOW, and it takes priority over whatever you were just discussing, even if that means changing the subject. Do NOT greet them again, say hello, or act like you are seeing them for the first time, and do NOT keep talking about the previous topic. Send the next line yourself: the natural thing your character would say or do right now, given this new situation specifically — not a continuation of the old one.'
+        : 'This is the very start of the conversation — send the first message yourself: a short, natural greeting that fits your role and this exact situation. Do not wait for the other person to speak first, and do not greet them as though you already know them unless your role says you do.'
       : '',
   ]
     .filter(Boolean)
@@ -146,9 +157,10 @@ aiPracticeRouter.post('/message', async (req, res) => {
   }
 
   const askForEndingSignal = Boolean(detectEnding && !opening);
+  const isContinuation = Boolean(opening && history && history.length > 0);
 
   const systemPrompt = [
-    buildSystemPrompt(body),
+    buildSystemPrompt(body, isContinuation),
     askForEndingSignal
       ? 'After giving your reply, also judge whether this feels like a natural point for the conversation to wind down — the small talk has run its course, there\'s a natural lull, or you\'ve both said enough for now. Don\'t rush it; most turns should NOT end the conversation. Respond with ONLY a JSON object of the exact shape {"reply": "<your in-character reply>", "endConversation": true or false} and nothing else — no markdown, no extra text.'
       : '',
@@ -162,7 +174,14 @@ aiPracticeRouter.post('/message', async (req, res) => {
       role: (m.role === 'user' ? 'user' : 'assistant') as GroqChatMessage['role'],
       content: m.text,
     })),
-    { role: 'user', content: opening ? '(The scene begins. Greet them now.)' : (message as string) },
+    {
+      role: 'user',
+      content: opening
+        ? isContinuation
+          ? '(The situation has just moved on. Continue the conversation now, in character, without greeting them again.)'
+          : '(The scene begins. Greet them now.)'
+        : (message as string),
+    },
   ];
 
   try {

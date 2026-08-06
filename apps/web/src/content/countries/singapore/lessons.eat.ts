@@ -203,14 +203,14 @@ export const eatLessons: Lesson[] = [
     challengeIds: ['eat-l5-c1', 'eat-l5-c2'],
     discover: [
       {
-        emoji: '🧩',
-        title: 'Let\'s put it together',
-        body: 'Hawker centre, chope, kopi, teh tarik, tray return, dabao, sedap — this challenge mixes them into one real hawker centre run.',
+        emoji: '🍽️',
+        title: 'One full hawker run',
+        body: 'Chope a table, crack the kopi code, order a teh tarik, dabao if you\'re in a rush, return your tray either way — this challenge strings it all into one real visit.',
       },
       {
-        emoji: '🍜',
-        title: 'A quick refresher',
-        body: "Hawker culture is recognised by UNESCO as intangible cultural heritage — sharing tables, queueing at multiple stalls, eating side-by-side with strangers is completely normal here.",
+        emoji: '🌏',
+        title: 'The bigger picture',
+        body: "UNESCO recognises hawker culture as intangible heritage — not for the food alone, but for what happens around it: strangers sharing tables, queues that cross every background in the country.",
       },
     ],
     phraseIds: ['chope', 'dabao'],

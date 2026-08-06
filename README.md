@@ -1,8 +1,8 @@
-# SG MODE 🇸🇬
+# SG Kaki 🇸🇬
 
 Live it. Learn it. Love it.
 
-SG MODE is a gamified Singapore-culture learning platform: it teaches before
+SG Kaki is a gamified Singapore-culture learning platform: it teaches before
 it tests. Every lesson runs **Discover → Phrase Card → Example Conversation →
 Guided Practice → Assessment → Recap**, so a lesson ends with "I learned
 something" rather than "I answered some questions." Old vocabulary keeps

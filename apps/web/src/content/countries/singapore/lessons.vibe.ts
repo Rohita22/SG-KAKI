@@ -23,6 +23,11 @@ export const vibeLessons: Lesson[] = [
         title: 'When you\'ll encounter it',
         body: 'Hawker stalls, popular shops, lifts during busy hours — queues form fast and quietly.',
       },
+      {
+        emoji: '🚯',
+        title: 'The bigger habit behind it',
+        body: 'Singapore is half-jokingly called a "fine city" — littering, jaywalking, and eating on the MRT are genuinely fineable, not just frowned upon. Most locals aren\'t thinking about the fines day to day; the habits just stuck.',
+      },
     ],
     phraseIds: ['queue'],
     cultureTopicIds: ['queue-etiquette', 'fines-and-public-rules'],
@@ -67,8 +72,14 @@ export const vibeLessons: Lesson[] = [
         title: 'When you\'ll encounter it',
         body: 'Feedback on food, plans, or how someone\'s day went — casual check-ins of all kinds.',
       },
+      {
+        emoji: '🙊',
+        title: 'Reading the room also means picking topics',
+        body: 'Race, religion, and politics are the topics locals themselves tend to skip in casual chat — not off-limits exactly, just not typical small talk with someone you\'ve just met. Food, weather, and weekend plans are always safe ground.',
+      },
     ],
     phraseIds: ['not-bad'],
+    cultureTopicIds: ['safe-topics'],
     exampleConversation: [
       { from: 'you', text: 'Was the food okay? Let me know if anything was off!' },
       { from: 'them', speaker: 'Friend', text: 'Can lah, not bad.' },
@@ -116,9 +127,14 @@ export const vibeLessons: Lesson[] = [
         title: 'When you\'ll encounter it',
         body: 'Hawker stall owners, cleaners, any older stranger you need to address quickly.',
       },
+      {
+        emoji: '🛕',
+        title: 'A different kind of courtesy',
+        body: 'If you visit a temple, mosque, or church, cover your shoulders and knees, and take your shoes off wherever you see a shoe rack at the entrance. Ask before photographing the prayer hall itself.',
+      },
     ],
     phraseIds: ['auntie-uncle', 'kaypoh'],
-    cultureTopicIds: ['shared-spaces'],
+    cultureTopicIds: ['shared-spaces', 'religious-etiquette'],
     exampleConversation: [
       { from: 'you', text: 'Auntie, one kopi peng please!' },
       { from: 'them', speaker: 'Auntie', text: 'Okay, wait ah! Eh, you new here ah? Where you from?' },
@@ -191,14 +207,14 @@ export const vibeLessons: Lesson[] = [
     challengeIds: ['vibe-l5-c1'],
     discover: [
       {
-        emoji: '🧩',
-        title: 'Let\'s put it together',
-        body: 'Queue, not bad, Auntie/Uncle, kaypoh, wah, bo jio, lepak — this challenge brings the social vibes together in one flow.',
+        emoji: '🎬',
+        title: 'A day of social cues',
+        body: 'Queue, not bad, Auntie/Uncle, kaypoh, wah, bo jio, lepak — this challenge runs it all together in one flow, from a queue to a weekend invite.',
       },
       {
         emoji: '👀',
-        title: 'A quick refresher',
-        body: 'Read the room, not just the words — indirectness here is a communication style, not a lack of honesty.',
+        title: 'The real skill',
+        body: 'Read the room, not just the words — indirectness here is a communication style, not a lack of honesty. Get comfortable with tone and you\'re most of the way there.',
       },
     ],
     phraseIds: ['queue', 'wah'],

@@ -227,6 +227,44 @@ export const cultureTopics: CultureTopic[] = [
     missionId: 'vibe',
   },
   {
+    id: 'safe-topics',
+    title: 'Small Talk: What to Skip',
+    icon: '🙊',
+    category: 'socialVibes',
+    summary: "Race, religion, and politics are the three topics locals themselves tend to steer around in casual chat.",
+    explanation:
+      "Singapore is genuinely multi-ethnic and multi-religious — Chinese, Malay, Indian, and other communities living side by side, each with their own faiths. Precisely because of that, race, religion, and politics are treated as poor small-talk material by default, even among friends. It's not a taboo enforced by law in daily conversation, more a shared social reflex: those topics can turn a light chat serious fast, so most people just don't reach for them with someone they don't know well.",
+    examples: [
+      'Safe defaults: food, weather, weekend plans, where to travel next.',
+      "If a local brings up race or religion themselves, it's fine to engage — just don't be the one to open with it.",
+      'A joke that leans on ethnic stereotypes lands very differently here than it might elsewhere — best avoided entirely.',
+    ],
+    aiPrompts: [
+      'Is it ever okay to ask about someone\'s religion?',
+      'What do I do if a conversation heads there by accident?',
+    ],
+    missionId: 'vibe',
+  },
+  {
+    id: 'religious-etiquette',
+    title: 'Visiting Temples & Mosques',
+    icon: '🛕',
+    category: 'socialVibes',
+    summary: "Dress modestly, remove your shoes where asked, and check before you raise a camera.",
+    explanation:
+      "Singapore's temples, mosques, and churches are active places of worship, not museums — and they're everywhere, often blocks apart from each other. The baseline expectations are consistent across most of them: cover your shoulders and knees, take your shoes off before stepping onto carpeted or raised prayer areas, and keep your voice down. Photography is usually fine in open courtyards but not always inside the prayer hall itself — a quick glance for a sign, or a quick ask, settles it.",
+    examples: [
+      'A light scarf or shawl in your bag covers you if you end up somewhere unplanned.',
+      'Shoes come off at the entrance of most mosques and many temples — look for a shoe rack.',
+      "If in doubt about photos, ask a staff member rather than assuming.",
+    ],
+    aiPrompts: [
+      'What should I wear if I\'m visiting a mosque?',
+      'Is it rude to take photos inside a temple?',
+    ],
+    missionId: 'vibe',
+  },
+  {
     id: 'singlish-code-switching',
     title: 'Singlish, Not "Broken English"',
     icon: '🗣️',
@@ -252,7 +290,7 @@ export const cultureTopics: CultureTopic[] = [
     category: 'workCulture',
     summary: "'On time' generally means on time — arriving late to a meeting reads as unprofessional.",
     explanation:
-      "Singapore workplaces generally treat scheduled start times as firm — arriving on time, or a couple of minutes early, is the baseline expectation for meetings and work commitments. This can vary by industry and team, but as a newcomer, defaulting to punctuality is always the safe choice. Even expats new to the culture tend to adapt fast: surveys of expats working in Singapore find close to half arrive early rather than risk cutting it close.",
+      "Singapore workplaces generally treat scheduled start times as firm — arriving on time, or a couple of minutes early, is the baseline expectation for meetings and work commitments. This can vary by industry and team, but as a newcomer, defaulting to punctuality is always the safe choice. It's less about the clock and more about what it signals: showing up on time is read as a basic sign that you take the commitment, and the people waiting on you, seriously.",
     examples: [
       'A 9am meeting is expected to start at 9am, not 9:15.',
       "If you're running late, a quick heads-up message is appreciated.",
@@ -289,7 +327,7 @@ export const cultureTopics: CultureTopic[] = [
     category: 'workCulture',
     summary: 'Many Singapore workplaces are hierarchical, multicultural, and channel-conscious.',
     explanation:
-      "Singapore offices typically follow a hierarchical structure where seniority is respected and decisions often flow top-down — going over a manager's head, even with good intentions, can land badly. Communication tends to be professional and practical, though the emphasis on group harmony means it can be more indirect than you're used to, especially when something's going wrong. The workforce is also genuinely multicultural: walk down a corridor and you might hear Mandarin, Tamil, Malay, and English in the same few minutes.",
+      "Singapore offices typically follow a hierarchical structure where seniority is respected and decisions often flow top-down — going over a manager's head, even with good intentions, can land badly. Communication tends to be professional and practical, though the emphasis on group harmony means it can be more indirect than you're used to, especially when something's going wrong. It's also a genuinely multicultural workforce — a single team meeting might code-switch between English, Mandarin, Malay, and Tamil without anyone thinking twice about it.",
     examples: [
       'Raise disagreements through the proper channel — usually your direct manager first, not skipping straight to leadership.',
       'A "no" is often delivered softly ("let me check and get back to you") rather than bluntly.',

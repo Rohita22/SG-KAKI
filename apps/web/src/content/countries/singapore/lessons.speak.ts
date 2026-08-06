@@ -9,20 +9,28 @@ export const speakLessons: Lesson[] = [
     challengeIds: ['speak-l1-c1', 'speak-l1-c2'],
     discover: [
       {
-        emoji: '💬',
+        tag: 'WORD OF THE LESSON',
+        word: '“Can”',
+        phraseId: 'can',
         title: 'The most useful word in Singlish',
-        body: "\"Can\" does a lot of work here. It's not just the English modal verb — on its own, it's a complete, upbeat \"yes.\"",
-      },
-      {
-        emoji: '🤝',
-        title: 'Why it matters',
-        body: "You'll hear it constantly — from a colleague confirming a meeting to a hawker stall confirming your order. Recognising it instantly saves you a beat of confusion.",
-      },
-      {
-        emoji: '👂',
-        title: 'When you\'ll hear it',
-        body: 'Anywhere something is being confirmed or agreed to — work chats, food orders, casual plans.',
-      },
+        body: '"Can" does a lot of work here. It\'s not just the English modal verb — on its own, it\'s a complete, upbeat "yes."',
+        sections: [
+          {
+            icon: '✨',
+            title: 'Why it matters',
+            body: 'It shows ability, possibility, permission, and willingness — all in one tiny word.'
+          },
+          {
+            icon: '⭐',
+            title: 'Examples',
+            list: [
+              'Can or not?',
+              'I can help.',
+              'Can lah!'
+            ]
+          }
+        ]
+      }
     ],
     phraseIds: ['can'],
     exampleConversation: [
@@ -53,22 +61,76 @@ export const speakLessons: Lesson[] = [
     challengeIds: ['speak-l2-c1', 'speak-l2-c2'],
     discover: [
       {
-        emoji: '🎵',
+        tag: 'WORD OF THE LESSON',
+        word: '“Lah”',
+        phraseId: 'lah',
         title: 'Particles carry tone, not meaning',
-        body: '"Lah," "leh," and "lor" don\'t translate word-for-word — they colour how a sentence feels: softer, questioning, or easygoing.',
+        body: 'Particles like "Lah" don\'t translate word-for-word — they colour how a sentence feels. "Lah" adds reassurance or finality to a sentence.',
+        sections: [
+          {
+            icon: '✨',
+            title: 'Why it matters',
+            body: 'Getting the particle right changes how a sentence lands emotionally. "Lah" reads as reassurance or light emphasis.'
+          },
+          {
+            icon: '⭐',
+            title: 'Examples',
+            list: [
+              'Don\'t worry lah.',
+              'Okay lah, let\'s go.',
+              'Very good lah!'
+            ]
+          }
+        ]
       },
       {
-        emoji: '🤷',
-        title: 'Why it matters',
-        body: 'Getting the particle right changes how a sentence lands emotionally — "lor" reads as a shrug, "lah" as reassurance.',
+        tag: 'WORD OF THE LESSON',
+        word: '“Lor”',
+        phraseId: 'lor',
+        title: 'The casual shrug',
+        body: '"Lor" is another particle that changes the emotional beat — it conveys a sense of easygoing acceptance, resignation, or stating the obvious.',
+        sections: [
+          {
+            icon: '✨',
+            title: 'Why it matters',
+            body: 'Using "lor" softens a statement so it doesn\'t sound aggressive. It\'s the verbal equivalent of a shrug.'
+          },
+          {
+            icon: '⭐',
+            title: 'Examples',
+            list: [
+              'Okay lor, you decide.',
+              'Like that lor.',
+              'Nothing to do lor.'
+            ]
+          }
+        ]
       },
       {
-        emoji: '👂',
-        title: 'When you\'ll hear it',
-        body: 'Constantly, in almost any casual conversation — texts, hawker chats, quick plans.',
-      },
+        tag: 'WORD OF THE LESSON',
+        word: '“Leh”',
+        phraseId: 'leh',
+        title: 'The gentle nudge',
+        body: '"Leh" is softer than "lah" — it floats a suggestion or a mild objection without any real pressure behind it.',
+        sections: [
+          {
+            icon: '✨',
+            title: 'Why it matters',
+            body: 'It keeps a suggestion low-stakes. Nobody\'s pushing you — they\'re just putting an option on the table.'
+          },
+          {
+            icon: '⭐',
+            title: 'Examples',
+            list: [
+              'Movie got later showing leh.',
+              'Quite expensive leh.',
+              'Can try leh, why not.'
+            ]
+          }
+        ]
+      }
     ],
-    phraseIds: ['lah', 'lor'],
+    phraseIds: ['lah', 'lor', 'leh'],
     exampleConversation: [
       { from: 'them', speaker: 'Friend', text: 'Eh, movie got later showing leh, wanna catch that instead?' },
       { from: 'you', text: 'Okay lor, you decide.' },
@@ -85,8 +147,8 @@ export const speakLessons: Lesson[] = [
       },
     ],
     recap: [
-      'Learned "Lah" (reassurance) and "Lor" (easy acceptance)',
-      'Heard both in a casual back-and-forth',
+      'Learned "Lah" (reassurance), "Lor" (easy acceptance), and "Leh" (gentle nudge)',
+      'Heard all three in a casual back-and-forth',
       'Practiced picking the right particle for the tone',
     ],
   },
@@ -98,26 +160,103 @@ export const speakLessons: Lesson[] = [
     challengeIds: ['speak-l3-c1', 'speak-l3-c2'],
     discover: [
       {
-        emoji: '👂',
-        title: 'Understand first, speak later',
-        body: "You'll hear these words constantly well before you'd ever need to say them yourself — that's exactly the point.",
+        tag: 'WORD OF THE LESSON',
+        word: '“Shiok”',
+        phraseId: 'shiok',
+        title: 'The ultimate satisfaction',
+        body: 'This is the go-to word when something is intensely pleasurable, usually describing delicious food, a great massage, or a cold drink on a hot day.',
+        sections: [
+          {
+            icon: '✨',
+            title: 'Why it matters',
+            body: 'It\'s the highest compliment you can give a hawker about their food!'
+          },
+          {
+            icon: '⭐',
+            title: 'Examples',
+            list: [
+              'This laksa is damn shiok!',
+              'Wah, so shiok.',
+              'Eat until shiok.'
+            ]
+          }
+        ]
       },
       {
-        emoji: '😋',
-        title: 'Why it matters',
-        body: 'Missing "shiok," "paiseh," or "alamak" in conversation means missing the emotional beat of what someone just told you.',
+        tag: 'WORD OF THE LESSON',
+        word: '“Paiseh”',
+        phraseId: 'paiseh',
+        title: 'The polite apology',
+        body: 'A Hokkien term meaning embarrassed or shy. It\'s used as a light apology, similar to "my bad" or "excuse me."',
+        sections: [
+          {
+            icon: '✨',
+            title: 'Why it matters',
+            body: 'It softens social interactions. Say it when you bump into someone, are running late, or need to ask a favour.'
+          },
+          {
+            icon: '⭐',
+            title: 'Examples',
+            list: [
+              'Paiseh, I\'m late!',
+              'Abit paiseh to ask...',
+              'Paiseh ah, excuse me.'
+            ]
+          }
+        ]
       },
       {
-        emoji: '🗓️',
-        title: 'When you\'ll hear it',
-        body: 'Food reactions, casual apologies, sudden bad news, everyday small talk with friends and colleagues.',
+        tag: 'WORD OF THE LESSON',
+        word: '“Alamak”',
+        phraseId: 'alamak',
+        title: 'The universal "Oh no!"',
+        body: 'An exclamation of shock, dismay, or surprise. It\'s the direct equivalent of "Oh my goodness" or "Oops!"',
+        sections: [
+          {
+            icon: '✨',
+            title: 'Why it matters',
+            body: 'It\'s a dramatic, fun way to express mild frustration or sudden realization in casual settings.'
+          },
+          {
+            icon: '⭐',
+            title: 'Examples',
+            list: [
+              'Alamak, I forgot my wallet!',
+              'Alamak, so expensive!',
+              'Alamak, rain again.'
+            ]
+          }
+        ]
       },
+      {
+        tag: 'WORD OF THE LESSON',
+        word: '“Makan”',
+        phraseId: 'makan',
+        title: 'The word behind every food plan',
+        body: 'Malay for "eat" — but in everyday Singapore English it covers both the verb and the noun. Ask "Makan already?" and you\'re really asking "Have you eaten?"',
+        sections: [
+          {
+            icon: '✨',
+            title: 'Why it matters',
+            body: 'It\'s probably the single most-used word in this whole app — every plan eventually turns into a plan to makan.'
+          },
+          {
+            icon: '⭐',
+            title: 'Examples',
+            list: [
+              'Makan already or not?',
+              'Where to makan later?',
+              'Jio you for makan!'
+            ]
+          }
+        ]
+      }
     ],
-    phraseIds: ['shiok', 'paiseh', 'alamak'],
+    phraseIds: ['shiok', 'paiseh', 'alamak', 'makan'],
     exampleConversation: [
       { from: 'them', speaker: 'Friend', text: 'Just tried the laksa here — so shiok!' },
       { from: 'you', text: 'Paiseh, I already ate. Next time!' },
-      { from: 'them', speaker: 'Friend', text: 'Alamak, and it just sold out too!' },
+      { from: 'them', speaker: 'Friend', text: 'Alamak, and it just sold out too! Makan somewhere else next week?' },
     ],
     guidedPractice: [
       {
@@ -129,8 +268,8 @@ export const speakLessons: Lesson[] = [
       },
     ],
     recap: [
-      'Learned "Shiok" (satisfying/great), "Paiseh" (embarrassed/light apology), and "Alamak" (oh no!)',
-      'Saw all three used in a real reaction',
+      'Learned "Shiok" (satisfying/great), "Paiseh" (embarrassed/light apology), "Alamak" (oh no!), and "Makan" (eat/food)',
+      'Saw all four used in a real reaction',
       'Practiced matching a word to its sound',
     ],
   },
@@ -142,20 +281,97 @@ export const speakLessons: Lesson[] = [
     challengeIds: ['speak-l4-c1', 'speak-l4-c2'],
     discover: [
       {
-        emoji: '🏃',
-        title: 'Self-aware, not harsh',
-        body: '"Kiasu," "blur," and "siao" describe very relatable habits — the fear of missing out, being out of the loop, or just being a bit wild — usually said with a smile.',
+        tag: 'WORD OF THE LESSON',
+        word: '“Kiasu”',
+        phraseId: 'kiasu',
+        title: 'The fear of missing out',
+        body: 'Literally "fear of losing." It describes the competitive, anxious drive to always get the best deal, reserve the best seat, or be first in line.',
+        sections: [
+          {
+            icon: '✨',
+            title: 'Why it matters',
+            body: 'It\'s a defining trait of local culture, often used affectionately to tease friends who go to extremes to not miss out.'
+          },
+          {
+            icon: '⭐',
+            title: 'Examples',
+            list: [
+              'Don\'t be so kiasu lah!',
+              'Very kiasu, queue since 6am.',
+              'Kiasu culture.'
+            ]
+          }
+        ]
       },
       {
-        emoji: '🙂',
-        title: 'Why it matters',
-        body: "They're used affectionately, even about yourself. Taking them as a real insult would be missing the tone — and \"steady\" flips the mood entirely, since it's pure approval.",
+        tag: 'WORD OF THE LESSON',
+        word: '“Blur”',
+        phraseId: 'blur',
+        title: 'Clueless and confused',
+        body: 'Used to describe someone who is out of the loop, slow to catch on, or just spaced out. Often paired with "sotong" (squid).',
+        sections: [
+          {
+            icon: '✨',
+            title: 'Why it matters',
+            body: 'It\'s a lighthearted, harmless tease among friends when someone misses an obvious detail.'
+          },
+          {
+            icon: '⭐',
+            title: 'Examples',
+            list: [
+              'Wah, you very blur today ah!',
+              'Act blur, live longer.',
+              'Blur like sotong.'
+            ]
+          }
+        ]
       },
       {
-        emoji: '👂',
-        title: 'When you\'ll hear it',
-        body: 'Light teasing among friends and colleagues — a long queue, a missed detail, a wild plan, a job well done. "Confirm plus chop" is a fun bonus you\'ll hear too — it just means "100% sure."',
+        tag: 'WORD OF THE LESSON',
+        word: '“Steady”',
+        phraseId: 'steady',
+        title: 'Solid and dependable',
+        body: 'A term of high praise meaning someone is capable, reliable, or agreeable to a plan.',
+        sections: [
+          {
+            icon: '✨',
+            title: 'Why it matters',
+            body: 'It\'s pure approval. If you agree to a plan or do someone a solid favour, they\'ll call you "steady."'
+          },
+          {
+            icon: '⭐',
+            title: 'Examples',
+            list: [
+              'Steady lah, bro!',
+              'Wow, very steady.',
+              'Steady pom pi pi.'
+            ]
+          }
+        ]
       },
+      {
+        tag: 'WORD OF THE LESSON',
+        word: '“Siao”',
+        phraseId: 'siao',
+        title: 'Crazy or out of mind',
+        body: 'Hokkien for crazy. It\'s used as a dramatic reaction to an absurd request, a ridiculous price, or a wild idea.',
+        sections: [
+          {
+            icon: '✨',
+            title: 'Why it matters',
+            body: 'Mostly used playfully between friends to express disbelief. Avoid using it with strangers or bosses!'
+          },
+          {
+            icon: '⭐',
+            title: 'Examples',
+            list: [
+              'You siao ah?',
+              'Work until siao.',
+              'Siao liao (going crazy).'
+            ]
+          }
+        ]
+      }
     ],
     phraseIds: ['kiasu', 'blur', 'steady', 'siao'],
     exampleConversation: [
@@ -185,14 +401,14 @@ export const speakLessons: Lesson[] = [
     challengeIds: ['speak-l5-c1', 'speak-l5-c2'],
     discover: [
       {
-        emoji: '🧩',
-        title: 'Let\'s put it together',
-        body: 'You\'ve picked up "can," "lah," "lor," "shiok," "paiseh," "alamak," "kiasu," "blur," "steady," and "siao." This challenge mixes them into one natural conversation.',
+        emoji: '🎤',
+        title: 'Your Singlish starter pack',
+        body: '"Can," "lah," "lor," "leh," "shiok," "paiseh," "alamak," "makan," "kiasu," "blur," "steady," "siao" — twelve words down. Time to hear them all fired off in one real conversation.',
       },
       {
-        emoji: '🗣️',
-        title: 'A quick refresher',
-        body: 'Singlish blends English with Malay, Hokkien, Tamil, and more — like a little abbreviation secret code that gets the point across fast. It\'s a distinct way of speaking, not "broken English." Recognising it is the real skill.',
+        emoji: '🗝️',
+        title: 'The one thing to remember',
+        body: 'It\'s a secret code, not broken English — English mixed with Malay, Hokkien, Tamil, and more, built by generations of Singaporeans switching languages mid-sentence. You don\'t need to speak it perfectly. Recognising it is the real skill.',
       },
     ],
     phraseIds: ['can', 'shiok'],

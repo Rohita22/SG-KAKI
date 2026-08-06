@@ -1,9 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { History } from 'lucide-react';
-import type { AIPracticeCompletionScript, AIPracticeVisualScene, ChatMessage } from '@/content/types';
+import type {
+  AIPracticeCompletionScript,
+  AIPracticeStageMinigame,
+  AIPracticeVisualScene,
+  ChatMessage,
+} from '@/content/types';
 import { clsx } from '@/lib/clsx';
 import { Button } from '@/components/ui/Button';
+import { BagItemPicker } from './BagItemPicker';
 import { ChatBubble, TypingBubble } from './ChatBubble';
 import { ConversationControls, type SinglishHint } from './ConversationControls';
 
@@ -94,6 +100,24 @@ const SPRITE_SIZES = {
   /** Kept close to 2:3 so portrait sprite art fills the frame without
    * object-cover shaving the sides off the figure. */
   large: 'h-40 w-[6.7rem] sm:h-56 sm:w-[9.3rem] lg:h-72 lg:w-48',
+  /** Measured against the actual generated art: the character only occupies
+   * ~35-55% of the canvas width (vs. scene1/2's art, drawn much closer to
+   * the frame edges), with wide empty vignette margin on both sides. A
+   * narrower box than `large` (~0.5 width:height instead of ~0.67) makes
+   * object-cover scale the image up and crop that margin off instead of
+   * rendering the character small in the middle of empty space. Kept at
+   * 0.5 rather than cropping tighter still: some poses (e.g. an outstretched
+   * pointing arm) sit off-center in their canvas, and a narrower box crops
+   * a centered window that would cut the arm off before the margin is gone.
+   * Same overall height as `large` — for scene3's wide-shot backgrounds
+   * (most of them), that reads at the right scale against the room; only
+   * the tight `eat.png` close-up needs `paddedClose` below. */
+  padded: 'h-40 w-20 sm:h-56 sm:w-28 lg:h-72 lg:w-36',
+  /** Same crop ratio as `padded`, taller — for the one background
+   * (`eat.png`) shot as a tight close-up on the table rather than a wide
+   * room shot. `padded` at that scale left the characters looking small
+   * and adrift against a table that fills almost the whole frame. */
+  paddedClose: 'h-56 w-28 sm:h-72 sm:w-36 lg:h-96 lg:w-48',
 } as const;
 
 export type SpriteSize = keyof typeof SPRITE_SIZES;
@@ -111,8 +135,8 @@ function CharacterSprite({
   alt: string;
   flip?: boolean;
   size?: SpriteSize;
-  initial: { opacity: number; x: number; y: number };
-  animate: { opacity: number; x: number; y: number };
+  initial: { opacity: number; x: number; y: number | string };
+  animate: { opacity: number; x: number; y: number | string };
   transition: object;
 }) {
   return (
@@ -137,6 +161,7 @@ export function VisualNovelScene({
   personaName,
   history,
   isTyping,
+  turnCount,
   suggestions,
   suggestionsLoading = false,
   readyToEnd = false,
@@ -144,6 +169,9 @@ export function VisualNovelScene({
   singlishHints = [],
   completionScript,
   completionXp,
+  minigame,
+  onMinigamePick,
+  currentStageId,
   draft,
   onDraftChange,
   onSend,
@@ -155,6 +183,11 @@ export function VisualNovelScene({
   personaName?: string;
   history: ChatMessage[];
   isTyping: boolean;
+  /** User turns to weigh against `completionScript`'s min/max turns. For a
+   * staged scenario this is scoped to the current stage, not the whole
+   * conversation — otherwise turns from earlier stages would trigger the
+   * scripted ending long before the final stage is reached. */
+  turnCount: number;
   /** AI-generated reply options for what the learner could say next, based on
    * the conversation so far — not a static list. */
   suggestions: string[];
@@ -167,6 +200,15 @@ export function VisualNovelScene({
   singlishHints?: SinglishHint[];
   completionScript?: AIPracticeCompletionScript;
   completionXp?: number;
+  /** When set, replaces the chat footer with a pick-the-item interaction for
+   * the current stage (e.g. choping a table with a tissue packet). */
+  minigame?: AIPracticeStageMinigame;
+  onMinigamePick?: (itemId: string) => boolean;
+  /** For a staged scenario: scopes the floating speech bubbles to this
+   * stage's own messages, so a fresh stage doesn't open still showing the
+   * previous stage's last line hanging over a character. Full `history` is
+   * still used for the transcript toggle, which should show everything. */
+  currentStageId?: string;
   draft: string;
   onDraftChange: (value: string) => void;
   onSend: (text: string) => void;
@@ -201,13 +243,17 @@ export function VisualNovelScene({
     }
   }, [history.length, phase]);
 
-  const turnCount = history.filter((m) => m.role === 'user').length;
+  // Scoped to the current stage (when staged) so a fresh stage doesn't open
+  // still showing a speech bubble left over from the previous one.
+  const bubbleHistory = currentStageId
+    ? history.filter((m) => m.stageId === currentStageId)
+    : history;
 
   // Tracked independently (not just "the last message overall") so the
   // player's line stays on screen through the classmate's typing + reply,
   // instead of vanishing the instant the other side responds.
-  const lastUserMessage = [...history].reverse().find((m) => m.role === 'user');
-  const lastAiMessage = [...history].reverse().find((m) => m.role === 'ai');
+  const lastUserMessage = [...bubbleHistory].reverse().find((m) => m.role === 'user');
+  const lastAiMessage = [...bubbleHistory].reverse().find((m) => m.role === 'ai');
 
   // Scripted ending: the AI itself judges when the conversation reaches a
   // natural stopping point (readyToEnd) rather than cutting off at a fixed
@@ -291,6 +337,7 @@ export function VisualNovelScene({
     <div className="overflow-hidden rounded-3xl bg-white shadow-card">
       <div className="relative h-64 w-full overflow-hidden bg-sg-navy sm:h-80 lg:h-[420px]">
         <motion.img
+          key={visualScene.backgroundImage}
           src={visualScene.backgroundImage}
           alt=""
           initial={{ opacity: 0 }}
@@ -298,6 +345,22 @@ export function VisualNovelScene({
           transition={{ duration: 0.6 }}
           className="absolute inset-0 size-full object-cover"
         />
+
+        {visualScene.propImage && (
+          <motion.img
+            key={visualScene.propImage}
+            src={visualScene.propImage}
+            alt=""
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4 }}
+            className="absolute w-10 -translate-x-1/2 -translate-y-1/2 drop-shadow-md sm:w-12 lg:w-14"
+            style={{
+              left: `${visualScene.propPositionPct?.x ?? 50}%`,
+              top: `${visualScene.propPositionPct?.y ?? 54}%`,
+            }}
+          />
+        )}
 
         <button
           type="button"
@@ -335,6 +398,7 @@ export function VisualNovelScene({
             </div>
             {visualScene.playerImage && (
               <CharacterSprite
+                key={visualScene.playerImage}
                 src={visualScene.playerImage}
                 alt="You"
                 flip={flipPlayer}
@@ -364,6 +428,7 @@ export function VisualNovelScene({
               </AnimatePresence>
             </div>
             <CharacterSprite
+              key={visualScene.characterImage}
               src={visualScene.characterImage}
               alt={personaName ?? 'Classmate'}
               flip={visualScene.flipCharacter}
@@ -402,6 +467,7 @@ export function VisualNovelScene({
             can't achieve (sprites always render above the background). */}
         {visualScene.foregroundImage && (
           <motion.img
+            key={visualScene.foregroundImage}
             src={visualScene.foregroundImage}
             alt=""
             initial={{ opacity: 0 }}
@@ -454,6 +520,8 @@ export function VisualNovelScene({
         <div className="border-t border-black/5 px-5 py-4 text-center text-sm font-semibold text-sg-navy/50">
           {completionScript?.closingCaption ?? 'Class is starting…'}
         </div>
+      ) : minigame ? (
+        <BagItemPicker minigame={minigame} onPick={onMinigamePick ?? (() => false)} />
       ) : (
         <ConversationControls
           turnCount={turnCount}

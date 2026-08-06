@@ -6,6 +6,11 @@ import { useProgress } from '@/state/useProgress';
 import { getMissionStatus } from '@/game/unlocks';
 import { LessonRow, type LessonStatus } from '@/components/missions/LessonRow';
 import { MissionSummaryPanel } from '@/components/missions/MissionSummaryPanel';
+import { ScreenBackdrop } from '@/components/shell/ScreenBackdrop';
+import { ScreenCornerArt } from '@/components/shell/ScreenCornerArt';
+
+const MISSION_BG_URL = '/images/field-guide-bg.png';
+const CORNER_ART_URL = '/images/field-guide-passport.png';
 
 export function MissionDetailScreen() {
   const { missionId } = useParams<{ missionId: string }>();
@@ -50,41 +55,46 @@ export function MissionDetailScreen() {
   ).length;
 
   return (
-    <div>
-      <button
-        type="button"
-        onClick={() => navigate('/map')}
-        aria-label="Back to journey"
-        className="mb-4 flex items-center gap-1.5 text-sm font-bold text-sg-navy/50 hover:text-sg-navy"
-      >
-        <ChevronLeft className="size-4" />
-        Back to Journey
-      </button>
+    <div className="relative -mx-4 -my-5 min-h-full shrink-0 px-4 py-5 sm:-mx-6 sm:px-6 lg:-mx-10 lg:-my-8 lg:px-10 lg:py-8">
+      <ScreenBackdrop image={MISSION_BG_URL} />
+      <ScreenCornerArt image={CORNER_ART_URL} />
 
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-        <div className="w-full shrink-0 lg:order-2 lg:w-80">
-          <MissionSummaryPanel
-            mission={mission}
-            status={missionStatus}
-            lessonsDone={lessonsDone}
-            lessonsTotal={lessons.length}
-            badge={badge}
-            completedChallengesInMission={completedChallengesInMission}
-            onContinue={() => navigate(`/lessons/${nextLesson.id}/play`)}
-            onRapidReview={() => navigate(`/missions/${mission.id}/monkey-bars`)}
-          />
-        </div>
+      <div className="relative z-10">
+        <button
+          type="button"
+          onClick={() => navigate('/map')}
+          aria-label="Back to journey"
+          className="mb-4 flex items-center gap-1.5 text-sm font-bold text-sg-navy/50 hover:text-sg-navy"
+        >
+          <ChevronLeft className="size-4" />
+          Back to Journey
+        </button>
 
-        <div className="min-w-0 flex-1 lg:order-1">
-          <div className="flex flex-col gap-2">
-            {lessons.map((lesson, i) => (
-              <LessonRow
-                key={lesson.id}
-                lesson={lesson}
-                status={statusFor(i, lesson)}
-                onSelect={(l) => navigate(`/lessons/${l.id}/play`)}
-              />
-            ))}
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+          <div className="w-full shrink-0 lg:order-2 lg:w-80">
+            <MissionSummaryPanel
+              mission={mission}
+              status={missionStatus}
+              lessonsDone={lessonsDone}
+              lessonsTotal={lessons.length}
+              badge={badge}
+              completedChallengesInMission={completedChallengesInMission}
+              onContinue={() => navigate(`/lessons/${nextLesson.id}/play`)}
+              onRapidReview={() => navigate(`/missions/${mission.id}/monkey-bars`)}
+            />
+          </div>
+
+          <div className="min-w-0 flex-1 lg:order-1">
+            <div className="flex flex-col gap-2">
+              {lessons.map((lesson, i) => (
+                <LessonRow
+                  key={lesson.id}
+                  lesson={lesson}
+                  status={statusFor(i, lesson)}
+                  onSelect={(l) => navigate(`/lessons/${l.id}/play`)}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </div>

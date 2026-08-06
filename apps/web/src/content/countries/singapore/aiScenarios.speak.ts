@@ -5,23 +5,27 @@ export const speakAiScenarios: AIPracticeScenario[] = [
     id: 'first-classmate',
     title: 'Meeting a Classmate',
     setup:
-      "You're meeting a Singaporean classmate for the first time before class starts. Start the conversation!",
+      "You are a new student who just joined a local secondary school. A friendly classmate approaches you before class starts to say hi. Chat with him and try to use the Singlish words you've learned!",
+    skills: [
+      'Casual communication',
+      'Understanding Singlish',
+      'Responding naturally',
+    ],
     suggestedOpeners: [
-      'Why you in Singapore?',
-      'Which school you go?',
-      'You free this weekend?',
+      'Hello!',
+      'Hi, nice to meet you.',
     ],
     completionXp: 50,
     sceneKey: 'classroom',
     personaName: 'Wei Jie',
     personaDescription:
-      'a laid-back, friendly Secondary 2 student who sits near you and is happy to chat in the few minutes before class starts. ' +
-      'He is curious about the new classmate without interrogating them: he asks one thing at a time, reacts to the answer, and offers something about himself back rather than firing off questions. ' +
-      'He speaks like a Singaporean teenager — casual, warm, light Singlish particles (lah, leh, sia) mixed into ordinary English, never formal or textbook. ' +
-      'He is meeting this person for the first time, so he does not know their name, where they are from, or anything about them until they say so, and he never pretends otherwise. ' +
-      'Typical ground: which class they are in, where they moved from, how they are settling in, teachers, canteen food, CCAs, what the homework was.',
+      'a laid-back, friendly Secondary 2 student who sees the new student (the user) and proactively walks over to introduce himself before class starts. ' +
+      'He knows the user is brand new and warmly welcomes them, starting the conversation first. ' +
+      'He speaks like a Singaporean teenager — casual, warm, using light Singlish particles (lah, leh, sia) mixed into ordinary English. NEVER use generic American greetings like "Hey, what\'s up". Start with a very local greeting like "Eh, hello!" or "You new here ah?". ' +
+      'Since he knows the user is trying to pick up local slang, he naturally incorporates the Singlish words the user has learned into his own sentences to show how they are used, and reacts encouragingly if the user tries using local terms. ' +
+      'Typical ground: introducing himself, asking where they moved from, and helping them settle in.',
     schoolName: 'Raffles Secondary School',
-    className: 'Secondary 2 Amanda',
+    className: 'Class 2A',
     autoOpen: true,
     hintCategories: ['lingo', 'socialVibes'],
     visualScene: {

@@ -55,8 +55,8 @@ export function ChallengeShell({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col p-4 sm:p-6 lg:p-10">
-      <div className="flex items-center gap-3 pb-5">
+    <div className="mx-auto flex w-full max-w-5xl flex-col p-3 sm:p-5 lg:p-6">
+      <div className="flex items-center gap-3 pb-3 sm:pb-4">
         <button
           type="button"
           onClick={() => navigate(-1)}
@@ -74,7 +74,7 @@ export function ChallengeShell({
         <LightningBadge xp={challenge.xp} />
       </div>
 
-      <div className="relative flex min-h-[480px] flex-col gap-6 rounded-3xl bg-sg-bg lg:flex-row lg:items-start">
+      <div className="relative flex min-h-[400px] flex-col gap-4 sm:gap-5 rounded-3xl bg-white/90 backdrop-blur-md p-4 sm:p-5 shadow-card lg:flex-row lg:items-start">
         {showLeftColumn && (
           <div className="lg:w-[42%] lg:shrink-0">
             {hasChatThread && 'chatThread' in challenge && challenge.chatThread ? (

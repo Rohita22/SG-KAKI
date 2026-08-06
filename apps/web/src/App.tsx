@@ -38,9 +38,9 @@ function App() {
                   path="/culturebook"
                   element={<Navigate to="/field-guide" replace state={{ tab: 'culture' }} />}
                 />
+                <Route path="/lessons/:lessonId/play" element={<LessonScreen />} />
                 <Route path="*" element={<Navigate to="/map" replace />} />
               </Route>
-              <Route path="/lessons/:lessonId/play" element={<LessonScreen />} />
               <Route
                 path="/missions/:missionId/monkey-bars"
                 element={<MonkeyBarsScreen />}

@@ -19,6 +19,11 @@ export const workLessons: Lesson[] = [
         body: 'Arriving late to a meeting reads as unprofessional, even if the meeting itself starts a little loosely elsewhere. Even expats new to Singapore tend to adapt fast — surveys find nearly half show up early rather than risk it.',
       },
       {
+        emoji: '🪜',
+        title: 'One more thing about meetings',
+        body: 'Many offices here are fairly hierarchical — disagreements usually go through your direct manager first, not straight to their boss. And if someone says "let me check and get back to you," that\'s often a soft no, delivered gently rather than bluntly.',
+      },
+      {
         emoji: '👂',
         title: 'When you\'ll encounter it',
         body: 'Every scheduled meeting, call, or work commitment.',
@@ -150,14 +155,14 @@ export const workLessons: Lesson[] = [
     challengeIds: ['work-l4-c1', 'work-l4-c2'],
     discover: [
       {
-        emoji: '🧩',
-        title: 'Let\'s put it together',
-        body: 'On the dot, noted, arrow, jio, zai — this challenge mixes them into one work day.',
+        emoji: '🏢',
+        title: 'A day at the office',
+        body: 'On the dot, noted, arrow, jio, zai — this challenge strings them into one ordinary work day, meeting to lunch to end-of-day chat.',
       },
       {
-        emoji: '💼',
-        title: 'A quick refresher',
-        body: 'Broad workplace norms are a starting point, not a fixed rulebook — every team has its own texture. Walk into any Singapore office and you might hear Mandarin, Tamil, Malay, and English in the same corridor. Pay attention to how yours operates.',
+        emoji: '🧭',
+        title: 'Your actual compass',
+        body: 'These are starting defaults, not a fixed rulebook — every team has its own texture. The real skill is paying attention to how yours specifically operates, and adjusting from there.',
       },
     ],
     phraseIds: ['noted', 'jio'],

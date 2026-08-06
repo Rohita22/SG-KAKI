@@ -10,5 +10,5 @@ export const levels: Level[] = [
   { level: 7, name: 'SG Savvy', minXp: 840 },
   { level: 8, name: 'Almost Local', minXp: 1050 },
   { level: 9, name: 'Local Operator', minXp: 1280 },
-  { level: 10, name: 'SG Mode Master', minXp: 1550 },
+  { level: 10, name: 'SG Kaki Master', minXp: 1550 },
 ];

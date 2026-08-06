@@ -15,7 +15,7 @@ export function ScreenCornerArt({ image }: { image: string }) {
       <img
         src={image}
         alt=""
-        className="w-[260px] opacity-85 mix-blend-multiply xl:w-[300px]"
+        className="w-[320px] opacity-85 mix-blend-multiply xl:w-[360px]"
       />
     </div>
   );

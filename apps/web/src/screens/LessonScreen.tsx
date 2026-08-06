@@ -18,6 +18,9 @@ import { LessonRecap } from '@/components/learning/LessonRecap';
 import { AskSGBuddy } from '@/components/learning/AskSGBuddy';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { Button } from '@/components/ui/Button';
+import { ScreenBackdrop } from '@/components/shell/ScreenBackdrop';
+
+const LESSON_BG_URL = '/images/lesson-bg.png';
 
 type PreStep = 'discover' | 'phrase' | 'conversation' | 'guided-practice';
 const PRE_STEP_ORDER: PreStep[] = ['discover', 'phrase', 'conversation', 'guided-practice'];
@@ -54,7 +57,14 @@ export function LessonScreen() {
 
   // Keyed by lesson id so the whole pre-assessment/recap step machine resets
   // cleanly when navigation moves on to the next lesson (same route component).
-  return <LessonFlow key={lesson.id} lesson={lesson} mission={mission} />;
+  return (
+    <div className="relative -mx-4 -my-5 min-h-full shrink-0 px-4 py-5 sm:-mx-6 sm:px-6 lg:-mx-10 lg:-my-8 lg:px-10 lg:py-8">
+      <ScreenBackdrop image={LESSON_BG_URL} />
+      <div className="relative z-10">
+        <LessonFlow key={lesson.id} lesson={lesson} mission={mission} />
+      </div>
+    </div>
+  );
 }
 
 function LessonFlow({ lesson, mission }: { lesson: Lesson; mission: Mission }) {
@@ -92,7 +102,13 @@ function LessonFlow({ lesson, mission }: { lesson: Lesson; mission: Mission }) {
       case 'discover':
         return (lesson.discover?.length ?? 0) > 0;
       case 'phrase':
-        return (lesson.phraseIds?.length ?? 0) > 0;
+        // Skip Phrase step if the discover cards already completely covered all the phrases
+        const discoverPhraseIds = lesson.discover?.map(d => d.phraseId).filter(Boolean) || [];
+        const lessonPhraseIds = lesson.phraseIds || [];
+        if (lessonPhraseIds.length > 0 && lessonPhraseIds.every(id => discoverPhraseIds.includes(id))) {
+          return false;
+        }
+        return lessonPhraseIds.length > 0;
       case 'conversation':
         return (lesson.exampleConversation?.length ?? 0) > 0;
       case 'guided-practice':
@@ -187,7 +203,7 @@ function LessonFlow({ lesson, mission }: { lesson: Lesson; mission: Mission }) {
 
   if (recap) {
     return (
-      <div className="mx-auto flex w-full max-w-xl flex-col p-4 sm:p-6 lg:p-10">
+      <div className="mx-auto flex w-full max-w-xl flex-col p-3 sm:p-5 lg:p-6">
         <LessonRecap
           recap={lesson.recap ?? []}
           xpEarned={xpEarned}
@@ -207,7 +223,7 @@ function LessonFlow({ lesson, mission }: { lesson: Lesson; mission: Mission }) {
     };
 
     return (
-      <div className="mx-auto flex w-full max-w-xl flex-col p-4 sm:p-6 lg:p-10">
+      <div className="mx-auto flex w-full max-w-xl flex-col p-3 sm:p-5 lg:p-6">
         <PreAssessmentHeader
           lessonIndex={lessonIndex}
           lessonTotal={lessonsInOrder.length}
@@ -347,7 +363,7 @@ function PreAssessmentHeader({
   onBack: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3 pb-5">
+    <div className="flex items-center gap-2.5 pb-4">
       <button
         type="button"
         onClick={onBack}

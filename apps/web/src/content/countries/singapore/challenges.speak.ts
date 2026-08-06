@@ -35,7 +35,7 @@ export const speakChallenges: Challenge[] = [
     ],
     correctOptionId: 'b',
     explanation:
-      "A packet of tissues (or umbrella) left on a seat is a widely understood signal in Singapore — it means the seat is 'choped' (reserved). Best to find another spot.",
+      "That's called 'choping' — you'll get the full story (and the word's origin) in the Eat mission. For now: tissues on a table almost always mean taken.",
     xp: 10,
     difficulty: 1,
   },

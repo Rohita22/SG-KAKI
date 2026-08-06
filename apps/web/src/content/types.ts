@@ -167,6 +167,13 @@ export interface AIPracticeVisualScene {
    * Depth in the background art alone can't do this — sprites always render
    * over the background, so the occluding element needs its own layer. */
   foregroundImage?: string;
+  /** A small prop rendered on the table between the characters (e.g. the
+   * tissue packet after it's been used to chope it) — sits above the
+   * background but behind the character sprites. Positioned as a percentage
+   * of the scene box so it lands on the table surface regardless of the
+   * viewport's cropped width. */
+  propImage?: string;
+  propPositionPct?: { x: number; y: number };
   /** How far to push each character down, as a percentage of their own height,
    * so they sit behind `foregroundImage` instead of on top of it. Applied only
    * to the named character; the other stays on the front floor line. */
@@ -178,8 +185,13 @@ export interface AIPracticeVisualScene {
   spread?: 'default' | 'wide';
   /** Sprite frame size. Landscape (3:2) art is cropped inward by object-cover
    * and so reads large at the default size; portrait (2:3) art fills the frame
-   * uncropped and needs 'large' to read at a comparable scale. */
-  spriteSize?: 'default' | 'large';
+   * uncropped and needs 'large' to read at a comparable scale. 'padded' is for
+   * portrait art with wide empty margin around the character (much of scene3's
+   * generated art) — narrower than 'large' so object-cover crops that margin
+   * away instead of rendering the character small and adrift in it. 'paddedClose'
+   * is the same crop but taller, for a background shot as a tight close-up
+   * rather than a wide room shot. */
+  spriteSize?: 'default' | 'large' | 'padded' | 'paddedClose';
 }
 
 /** The scripted cutscene that closes out a visual-scene practice session,
@@ -203,10 +215,40 @@ export interface AIPracticeCompletionScript {
   closingCaption?: string;
 }
 
+/** A pick-the-right-item interaction that replaces chat for one stage of a
+ * staged scenario (e.g. picking a tissue packet out of a bag to chope a
+ * table). Correct pick advances the stage immediately — there's no typing. */
+export interface AIPracticeStageMinigame {
+  prompt: string;
+  items: { id: string; label: string; image: string }[];
+  correctItemId: string;
+}
+
+/** One beat of a multi-stage scenario — its own background/character art and
+ * its own goal for the AI persona, chained together into one long scene
+ * (e.g. Hawker Centre Lunch: find a table -> chope it -> queue -> eat ->
+ * return the tray). See `AIPracticeScenario.stages`. */
+export interface AIPracticeStage {
+  id: string;
+  /** What the persona is trying to accomplish this beat — sent to the
+   * backend as `context` in place of the scenario-level `setup` while this
+   * stage is active. Phrase it as an instruction ("suggest finding a
+   * table"), not a scripted line — the AI still generates the actual line,
+   * same as `autoOpen` today. */
+  goal: string;
+  visualScene: AIPracticeVisualScene;
+  minTurns: number;
+  maxTurns: number;
+  /** When set, this stage has no chat — a correct pick advances immediately
+   * and `minTurns`/`maxTurns` are ignored. */
+  minigame?: AIPracticeStageMinigame;
+}
+
 export interface AIPracticeScenario {
   id: string;
   title: string;
   setup: string;
+  skills?: string[];
   suggestedOpeners: string[];
   completionXp: number;
   /** Unlocked once this mission is completed. Absent = available from the start. */
@@ -223,9 +265,14 @@ export interface AIPracticeScenario {
   className?: string;
   /** Real illustrated scene (background + character art). Takes priority over `sceneKey`. */
   visualScene?: AIPracticeVisualScene;
+  /** A multi-beat scene chaining several backgrounds/goals together (see
+   * `AIPracticeStage`). Takes priority over `visualScene` when present —
+   * each stage supplies its own visual scene as it becomes active. */
+  stages?: AIPracticeStage[];
   /** If true, the AI persona sends the first message instead of waiting on the player. */
   autoOpen?: boolean;
-  /** Scripted ending sequence. Absent = falls back to a manual "Finish Practice" button. */
+  /** Scripted ending sequence. Absent = falls back to a manual "Finish Practice" button.
+   * For a staged scenario, this fires once, after the final stage. */
   completionScript?: AIPracticeCompletionScript;
   /** Phrase categories relevant to this scenario's "Try using" hints — keeps
    * e.g. food vocab from showing up in a classroom chat. Absent = no filter. */
@@ -270,9 +317,19 @@ export interface CultureTopic {
 }
 
 export interface DiscoverFact {
-  emoji: string;
+  emoji?: string;
+  tag?: string;
+  word?: string;
+  phraseId?: string; // If provided, shows the pronunciation button and phonetics
   title: string;
   body: string;
+  illustration?: string;
+  sections?: {
+    icon?: string;
+    title: string;
+    body?: string;
+    list?: string[];
+  }[];
 }
 
 export interface ConversationLine {
@@ -316,6 +373,10 @@ export interface ChatMessage {
   role: 'user' | 'ai';
   text: string;
   timestamp: string;
+  /** Which stage of a staged scenario (`AIPracticeScenario.stages`) this
+   * message belongs to. Absent for non-staged scenarios and for messages
+   * sent before this field existed. */
+  stageId?: string;
 }
 
 export interface ProgressState {
