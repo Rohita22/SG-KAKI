@@ -185,12 +185,10 @@ export interface AIPracticeVisualScene {
   spread?: 'default' | 'wide';
   /** Sprite frame size. Landscape (3:2) art is cropped inward by object-cover
    * and so reads large at the default size; portrait (2:3) art fills the frame
-   * uncropped and needs 'large' to read at a comparable scale. 'padded' is for
-   * portrait art with wide empty margin around the character (much of scene3's
-   * generated art) — narrower than 'large' so object-cover crops that margin
-   * away instead of rendering the character small and adrift in it. 'paddedClose'
-   * is the same crop but taller, for a background shot as a tight close-up
-   * rather than a wide room shot. */
+   * portrait art with wide empty margin around the character — narrower than
+   * 'large' so object-cover crops that margin away instead of rendering the
+   * character small and adrift in it. 'paddedClose' is the same crop but
+   * taller, for a background shot as a tight close-up rather than a wide room shot. */
   spriteSize?: 'default' | 'large' | 'padded' | 'paddedClose';
 }
 
@@ -237,6 +235,12 @@ export interface AIPracticeStage {
    * same as `autoOpen` today. */
   goal: string;
   visualScene: AIPracticeVisualScene;
+  /** A short clip played full-bleed over the scene when this stage opens, as
+   * the transition into it (the bus pulling in, the bell being pressed). The
+   * stage's `visualScene` is what remains on screen once it finishes, so the
+   * clip's last frame should match that background. Skippable; absent = the
+   * stage opens straight into chat. */
+  cutsceneVideo?: string;
   minTurns: number;
   maxTurns: number;
   /** When set, this stage has no chat — a correct pick advances immediately

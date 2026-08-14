@@ -22,46 +22,4 @@ export const workAiScenarios: AIPracticeScenario[] = [
     autoOpen: true,
     hintCategories: ['workCulture', 'lingo'],
   },
-  {
-    id: 'team-meeting',
-    title: 'Team Meeting Check-in',
-    setup:
-      "It's your first team meeting. Your manager asks everyone to briefly share an update — take your turn.",
-    suggestedOpeners: [
-      'Sure, I can go first.',
-      'Quick update from my side —',
-      'I have a question before we start.',
-    ],
-    completionXp: 40,
-    unlocksAfterMissionId: 'work',
-    personaName: 'Mr Koh',
-    personaDescription:
-      "your manager, running the team's check-in meeting — friendly and approachable, but conscious of the clock and keeping things moving. " +
-      'He speaks like a Singaporean manager in a professional setting: mostly standard English with the occasional local turn of phrase, courteous, never stiff. ' +
-      'This is your first team meeting, so he knows your name and role but not much else about you, and he does not reference shared history you have not had. ' +
-      'He invites your update, listens, asks one specific follow-up question about what you mention, then moves things along — acknowledging your point and either handing over to the next person or closing the meeting.',
-    autoOpen: true,
-    hintCategories: ['workCulture', 'lingo'],
-  },
-  {
-    id: 'networking',
-    title: 'Networking at an Event',
-    setup:
-      "You're at a casual work networking mixer. Strike up a conversation with someone you haven't met.",
-    suggestedOpeners: [
-      'Hi, I don\'t think we\'ve met — I\'m new here.',
-      'So how do you know the organiser?',
-      'What team are you on?',
-    ],
-    completionXp: 40,
-    unlocksAfterMissionId: 'work',
-    personaName: 'Farhan',
-    personaDescription:
-      'another attendee at a casual work networking mixer — easy to talk to, genuinely curious about people, and glad someone came over to say hello. ' +
-      'He has never met this person before and treats the whole thing as a first introduction: he offers his own name and what he does, asks the usual mixer questions (what team are you on, how do you know the organiser, how are you finding it here), and reacts with interest to the answers. ' +
-      'His register is professional but relaxed — this is a social event, not an interview — with light Singlish and easy humour. ' +
-      'He keeps the conversation two-sided, sharing something about himself for each thing he asks, rather than interrogating.',
-    // No autoOpen: the scenario has the player strike up the conversation first.
-    hintCategories: ['workCulture', 'socialVibes', 'lingo'],
-  },
 ];

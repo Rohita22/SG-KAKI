@@ -38,15 +38,15 @@ export function Sidebar() {
         {collapsed ? <ChevronRight className="size-4" /> : <ChevronLeft className="size-4" />}
       </button>
 
-      <div className="px-2 text-center -mt-6">
+      <div className={clsx("px-2 text-center", collapsed ? "mt-4 mb-6" : "-mt-6")}>
         {collapsed ? (
-          <img src="/images/logo.png" alt="SG Kaki" className="w-10 h-10 mx-auto object-contain rounded-xl" />
+          <img src="/images/favicon-128.png" alt="SG Kaki" className="w-10 h-10 mx-auto object-contain rounded-xl" />
         ) : (
           <img src="/images/logo.png" alt="SG Kaki" className="w-full max-w-[280px] scale-110 mx-auto object-contain rounded-xl" />
         )}
       </div>
 
-      <nav aria-label="Primary" className="-mt-6 flex flex-col gap-1">
+      <nav aria-label="Primary" className={clsx("flex flex-col gap-1", collapsed ? "" : "-mt-6")}>
         {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}

@@ -181,6 +181,7 @@ export function AIPracticeScreen() {
               completionXp={scenario.completionXp}
               minigame={stage?.minigame}
               onMinigamePick={resolveMinigamePick}
+              cutsceneVideo={stage?.cutsceneVideo}
               currentStageId={stage?.id}
               draft={draft}
               onDraftChange={setDraft}

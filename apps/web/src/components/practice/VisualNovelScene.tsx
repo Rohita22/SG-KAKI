@@ -100,23 +100,12 @@ const SPRITE_SIZES = {
   /** Kept close to 2:3 so portrait sprite art fills the frame without
    * object-cover shaving the sides off the figure. */
   large: 'h-40 w-[6.7rem] sm:h-56 sm:w-[9.3rem] lg:h-72 lg:w-48',
-  /** Measured against the actual generated art: the character only occupies
-   * ~35-55% of the canvas width (vs. scene1/2's art, drawn much closer to
-   * the frame edges), with wide empty vignette margin on both sides. A
+  /** Portrait art with wide empty margin around the character. A
    * narrower box than `large` (~0.5 width:height instead of ~0.67) makes
    * object-cover scale the image up and crop that margin off instead of
-   * rendering the character small in the middle of empty space. Kept at
-   * 0.5 rather than cropping tighter still: some poses (e.g. an outstretched
-   * pointing arm) sit off-center in their canvas, and a narrower box crops
-   * a centered window that would cut the arm off before the margin is gone.
-   * Same overall height as `large` — for scene3's wide-shot backgrounds
-   * (most of them), that reads at the right scale against the room; only
-   * the tight `eat.png` close-up needs `paddedClose` below. */
+   * rendering the character small in the middle of empty space. */
   padded: 'h-40 w-20 sm:h-56 sm:w-28 lg:h-72 lg:w-36',
-  /** Same crop ratio as `padded`, taller — for the one background
-   * (`eat.png`) shot as a tight close-up on the table rather than a wide
-   * room shot. `padded` at that scale left the characters looking small
-   * and adrift against a table that fills almost the whole frame. */
+  /** Same crop ratio as `padded`, taller — for tight close-up shots. */
   paddedClose: 'h-56 w-28 sm:h-72 sm:w-36 lg:h-96 lg:w-48',
 } as const;
 
@@ -171,6 +160,7 @@ export function VisualNovelScene({
   completionXp,
   minigame,
   onMinigamePick,
+  cutsceneVideo,
   currentStageId,
   draft,
   onDraftChange,
@@ -204,6 +194,10 @@ export function VisualNovelScene({
    * the current stage (e.g. choping a table with a tissue packet). */
   minigame?: AIPracticeStageMinigame;
   onMinigamePick?: (itemId: string) => boolean;
+  /** Clip for the stage that just opened, played over the scene before its
+   * chat starts. Changing it (i.e. advancing to a stage that has one) starts
+   * playback; it ends on the clip finishing or the player skipping. */
+  cutsceneVideo?: string;
   /** For a staged scenario: scopes the floating speech bubbles to this
    * stage's own messages, so a fresh stage doesn't open still showing the
    * previous stage's last line hanging over a character. Full `history` is
@@ -221,9 +215,16 @@ export function VisualNovelScene({
 }) {
   const [showTranscript, setShowTranscript] = useState(false);
   const [phase, setPhase] = useState<CutscenePhase>('chat');
+  // Keyed on the clip's own URL rather than a boolean, so arriving at a stage
+  // replays only when that stage actually brings a different clip.
+  const [playingVideo, setPlayingVideo] = useState<string | undefined>(cutsceneVideo);
   const sessionCompleteFired = useRef(false);
   const endCardRef = useRef<HTMLDivElement>(null);
   const reduceMotion = useReducedMotion();
+
+  useEffect(() => {
+    setPlayingVideo(cutsceneVideo);
+  }, [cutsceneVideo]);
 
   // The end card can land below the fold of the page's scroll container —
   // bring it into view so "Try Again"/"Done" aren't left half-hidden behind
@@ -476,6 +477,34 @@ export function VisualNovelScene({
             className="pointer-events-none absolute inset-0 z-10 size-full object-cover"
           />
         )}
+
+        {/* Above every scene layer (foreground z-10, sprites z-20, bubbles
+            z-30): while a stage's clip runs it IS the scene, and the still
+            layers underneath are what it hands back to on the last frame.
+            muted + playsInline because autoplay is otherwise blocked on
+            mobile Safari, which would leave a frozen first frame with no way
+            past it but the skip button. */}
+        {playingVideo && (
+          <motion.div
+            key={playingVideo}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-40 bg-black"
+          >
+            <video
+              src={playingVideo}
+              autoPlay
+              muted
+              playsInline
+              onEnded={() => setPlayingVideo(undefined)}
+              // A missing or unplayable clip must not strand the player on a
+              // black box — drop straight through to the stage's chat.
+              onError={() => setPlayingVideo(undefined)}
+              className="size-full object-cover"
+            />
+          </motion.div>
+        )}
       </div>
 
       <AnimatePresence>
@@ -515,6 +544,14 @@ export function VisualNovelScene({
               Done
             </Button>
           </div>
+        </div>
+      ) : playingVideo ? (
+        // Replaces the chat footer for the length of the clip, so the player
+        // can't type into a conversation that hasn't started yet.
+        <div className="flex items-center justify-center border-t border-black/5 px-5 py-4">
+          <Button variant="secondary" onClick={() => setPlayingVideo(undefined)}>
+            Skip
+          </Button>
         </div>
       ) : phase !== 'chat' ? (
         <div className="border-t border-black/5 px-5 py-4 text-center text-sm font-semibold text-sg-navy/50">
