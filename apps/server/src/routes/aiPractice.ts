@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   groqChat,
   groqStructuredChat,
+  groqSuggestions,
   GroqNotConfiguredError,
   type GroqChatMessage,
 } from '../integrations/groq.js';
@@ -29,6 +30,10 @@ interface MessageRequestBody extends PersonaContext {
   opening?: boolean;
   /** If true, the AI also judges whether this is a natural point to wind the conversation down. */
   detectEnding?: boolean;
+  /** The specific thing that marks THIS exchange as finished, e.g. "you have
+   * suggested going to find a table". A staged scene passes its current beat's
+   * end condition so the signal tracks that beat instead of a vague lull. */
+  endWhen?: string;
   /** Singlish terms the learner has already unlocked, in learning order. */
   unlockedWords?: string[];
 }
@@ -48,20 +53,16 @@ function buildVocabularyRule(unlockedWords: string[] | undefined): string {
     // at all. The distinction that matters is between particles a learner can
     // absorb from context and vocabulary they would have to look up.
     'You may also use the common sentence-final particles (lah, leh, lor, ah, hor, meh, sia) where they fit your character, since these carry tone rather than meaning and are understandable from context. ' +
+    // The model kept satisfying the "use the taught words" instruction by
+    // appending one after the full stop ("...too long. lah"), which reads as a
+    // label rather than speech.
+    'Place any Singlish word inside the sentence it belongs to, the way a real speaker would say it — a particle sits at the end of its own sentence, before the punctuation, and is never tacked on afterwards as a word by itself. ' +
     "Avoid Singlish nouns, verbs or idioms outside the taught list, though — those carry meaning the learner hasn't been given yet. If your character would naturally use one, either say it and immediately make the meaning obvious from context, or use the plain English equivalent instead."
   );
 }
 
 function buildSystemPrompt(
   body: PersonaContext & { opening?: boolean; unlockedWords?: string[] },
-  /** True when `opening` is really "advance into a new beat of an ongoing
-   * conversation" (a staged scenario opening its 2nd+ stage) rather than
-   * the true first message — e.g. `history` was non-empty on an `opening`
-   * request. Without this, every stage-open reused the same "this is the
-   * very start, send a greeting" instruction, so persona lines for later
-   * stages routinely re-greeted the learner mid-conversation instead of
-   * continuing it. */
-  isContinuation = false,
 ): string {
   const {
     context,
@@ -89,14 +90,14 @@ function buildSystemPrompt(
     // Scenario before the style rules: the model anchors much better on what
     // this exchange is *for* when it reads the situation first.
     context ? `The situation: ${context}` : '',
-    'Reply in 1-2 short, natural sentences, in character, and never break character or mention that you are an AI.',
+    // Hard word cap, not just "short": replies are rendered inside speech
+    // bubbles over the scene art, and anything longer overflows them.
+    'Reply with ONE or TWO short spoken sentences, 30 words maximum, in character. Never write a paragraph, a list, or stage directions, and never break character or mention that you are an AI.',
     'Respond to what the other person actually said rather than giving a generic line, and keep the exchange moving toward whatever this situation is about — do not stall by asking vague questions or repeating yourself.',
     'Vary how you speak: do not open consecutive messages the same way, and do not restate something you have already said.',
     buildVocabularyRule(unlockedWords),
     opening
-      ? isContinuation
-        ? 'You are already mid-conversation with this person, and the scene has just moved on to a new moment — treat "The situation" described above as what is happening RIGHT NOW, and it takes priority over whatever you were just discussing, even if that means changing the subject. Do NOT greet them again, say hello, or act like you are seeing them for the first time, and do NOT keep talking about the previous topic. Send the next line yourself: the natural thing your character would say or do right now, given this new situation specifically — not a continuation of the old one.'
-        : 'This is the very start of the conversation — send the first message yourself: a short, natural greeting that fits your role and this exact situation. Do not wait for the other person to speak first, and do not greet them as though you already know them unless your role says you do.'
+      ? 'This is the very start of the conversation — send the first message yourself: a short, natural greeting that fits your role and this exact situation. Do not wait for the other person to speak first, and do not greet them as though you already know them unless your role says you do.'
       : '',
   ]
     .filter(Boolean)
@@ -121,13 +122,85 @@ function stripWrappingQuotes(text: string): string {
   return trimmed;
 }
 
-/** Pulls the first JSON object/array out of a model reply, tolerating stray prose or code fences. */
-function extractJson<T>(raw: string, isValid: (value: unknown) => value is T): T | undefined {
+/** Replies are rendered inside speech bubbles drawn over the scene art, so a
+ * rambling answer overflows the frame. The prompt asks for short lines but the
+ * model regularly overshoots it, so cap it here too: keep whole sentences up to
+ * the limit, and only fall back to a mid-sentence cut if the very first
+ * sentence is already too long. */
+const MAX_REPLY_WORDS = 35;
+const MAX_HISTORY_MESSAGES = 20;
+const MAX_TEXT_LENGTH = 2_000;
+// Generous on purpose: this bounds authored scene copy, not user input. A
+// staged scene sends its whole beat goal as `context`, and those run well past
+// a few hundred characters — a tight cap here 400s every turn of the scene.
+const MAX_CONTEXT_LENGTH = 4_000;
+const MAX_UNLOCKED_WORDS = 100;
+
+function isBoundedString(value: unknown, maxLength: number): value is string {
+  return typeof value === 'string' && value.length <= maxLength;
+}
+
+export function isValidHistory(value: unknown): value is HistoryMessage[] {
+  return (
+    value === undefined ||
+    (Array.isArray(value) &&
+      value.every(
+        (message) =>
+          typeof message === 'object' &&
+          message !== null &&
+          ((message as HistoryMessage).role === 'user' ||
+            (message as HistoryMessage).role === 'ai') &&
+          isBoundedString((message as HistoryMessage).text, MAX_TEXT_LENGTH),
+      ))
+  );
+}
+
+export function isValidPersonaContext(body: PersonaContext): boolean {
+  return [
+    body.context,
+    body.personaName,
+    body.personaDescription,
+    body.schoolName,
+    body.className,
+    body.teacherName,
+  ].every((value) => value === undefined || isBoundedString(value, MAX_CONTEXT_LENGTH));
+}
+
+function isValidUnlockedWords(value: unknown): value is string[] {
+  return (
+    value === undefined ||
+    (Array.isArray(value) &&
+      value.length <= MAX_UNLOCKED_WORDS &&
+      value.every((word) => isBoundedString(word, 100)))
+  );
+}
+
+export function capReplyLength(text: string): string {
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length <= MAX_REPLY_WORDS) return text;
+
+  // Sentence-ending punctuation, keeping the punctuation with its sentence.
+  const sentences = text.match(/[^.!?…]+[.!?…]+["'”’)]*\s*|[^.!?…]+$/g) ?? [text];
+  let kept = '';
+  for (const sentence of sentences) {
+    const candidate = kept + sentence;
+    if (candidate.split(/\s+/).filter(Boolean).length > MAX_REPLY_WORDS) break;
+    kept = candidate;
+  }
+
+  return kept.trim() || words.slice(0, MAX_REPLY_WORDS).join(' ') + '…';
+}
+
+/** Pulls the first JSON object/array out of a model reply, tolerating stray prose,
+ * code fences, or a Harmony tool-call envelope that buries the payload under "arguments". */
+export function extractJson<T>(raw: string, isValid: (value: unknown) => value is T): T | undefined {
   const match = raw.match(/[[{][\s\S]*[\]}]/);
   if (!match) return undefined;
   try {
     const parsed = JSON.parse(match[0]) as unknown;
-    return isValid(parsed) ? parsed : undefined;
+    if (isValid(parsed)) return parsed;
+    const unwrapped = (parsed as { arguments?: unknown } | null)?.arguments;
+    return isValid(unwrapped) ? unwrapped : undefined;
   } catch {
     return undefined;
   }
@@ -138,30 +211,60 @@ interface ReplyWithEnding {
   endConversation: boolean;
 }
 
-function isReplyWithEnding(value: unknown): value is ReplyWithEnding {
+/** `endConversation` is deliberately not required to be a boolean: the model
+ * sometimes emits it as the string "true", or leaves it out entirely, and
+ * rejecting the whole object over that used to drop the raw `{"reply": ...}`
+ * envelope straight into a speech bubble. The reply is the only part that has
+ * to be right — a missing ending signal just means "not yet". */
+export function isReplyWithEnding(value: unknown): value is ReplyWithEnding {
   return (
     typeof value === 'object' &&
     value !== null &&
-    typeof (value as ReplyWithEnding).reply === 'string' &&
-    typeof (value as ReplyWithEnding).endConversation === 'boolean'
+    typeof (value as ReplyWithEnding).reply === 'string'
   );
 }
 
-aiPracticeRouter.post('/message', async (req, res) => {
-  const body = req.body as MessageRequestBody;
-  const { history, message, opening, detectEnding } = body;
+function endsConversation(value: unknown): boolean {
+  return value === true || value === 'true';
+}
 
-  if (!opening && (!message || typeof message !== 'string')) {
+/** Last resort when the model's JSON can't be parsed at all — a reply cut off
+ * at the token limit (`{"reply": "Come, let's go find`) has no closing brace
+ * for `extractJson` to match, so the whole envelope used to be rendered as the
+ * persona's line. Pulls the reply string out by hand instead. */
+export function salvageReply(raw: string): string {
+  const match = raw.match(/"reply"\s*:\s*"((?:[^"\\]|\\.)*)/);
+  return match ? match[1].replace(/\\(.)/g, '$1').trim() : raw;
+}
+
+aiPracticeRouter.post('/message', async (req, res) => {
+  const body = (req.body && typeof req.body === 'object' && !Array.isArray(req.body)
+    ? req.body
+    : {}) as MessageRequestBody;
+  const { history, message, opening, detectEnding, endWhen } = body;
+
+  if (
+    !isValidHistory(history) ||
+    !isValidPersonaContext(body) ||
+    !isValidUnlockedWords(body.unlockedWords) ||
+    (message !== undefined && !isBoundedString(message, MAX_TEXT_LENGTH)) ||
+    (endWhen !== undefined && !isBoundedString(endWhen, MAX_CONTEXT_LENGTH)) ||
+    !opening && !message
+  ) {
     res.status(400).json({ error: 'message is required' });
     return;
   }
 
   const askForEndingSignal = Boolean(detectEnding && !opening);
-  const isContinuation = Boolean(opening && history && history.length > 0);
 
   const systemPrompt = [
-    buildSystemPrompt(body, isContinuation),
-    askForEndingSignal
+    buildSystemPrompt(body),
+    // A staged scene knows exactly what "done" looks like for the beat it is
+    // running, and says so. The generic lull test below almost never fires,
+    // which left players typing "ok" at a beat that had already closed itself.
+    askForEndingSignal && endWhen
+      ? `After giving your reply, judge whether this exchange has reached its end point. It has reached it once: ${endWhen}. Set endConversation to true on the reply where that happens — including this one, if your own reply is what does it. Respond with ONLY a JSON object of the exact shape {"reply": "<your in-character reply>", "endConversation": true or false} and nothing else — no markdown, no extra text.`
+      : askForEndingSignal
       ? 'After giving your reply, also judge whether this feels like a natural point for the conversation to wind down — the small talk has run its course, there\'s a natural lull, or you\'ve both said enough for now. Don\'t rush it; most turns should NOT end the conversation. Respond with ONLY a JSON object of the exact shape {"reply": "<your in-character reply>", "endConversation": true or false} and nothing else — no markdown, no extra text.'
       : '',
   ]
@@ -170,34 +273,35 @@ aiPracticeRouter.post('/message', async (req, res) => {
 
   const messages: GroqChatMessage[] = [
     { role: 'system', content: systemPrompt },
-    ...(history ?? []).map((m) => ({
+    // Only the recent turns are worth sending: older ones add tokens without
+  // changing the reply, and the raw list grows unbounded as a scene runs.
+  ...(history ?? []).slice(-MAX_HISTORY_MESSAGES).map((m) => ({
       role: (m.role === 'user' ? 'user' : 'assistant') as GroqChatMessage['role'],
       content: m.text,
     })),
     {
       role: 'user',
-      content: opening
-        ? isContinuation
-          ? '(The situation has just moved on. Continue the conversation now, in character, without greeting them again.)'
-          : '(The scene begins. Greet them now.)'
-        : (message as string),
+      content: opening ? '(The scene begins. Greet them now.)' : (message as string),
     },
   ];
 
   try {
-    const raw = await groqChat(messages);
-
     if (!askForEndingSignal) {
-      res.json({ reply: stripWrappingQuotes(raw), endConversation: false });
+      const raw = await groqChat(messages);
+      res.json({ reply: capReplyLength(stripWrappingQuotes(raw)), endConversation: false });
       return;
     }
 
+    // The prompt above asks for a JSON object, so ask the API for one too.
+    // Plain groqChat leaves the model free to wander outside that shape, and
+    // whatever came back was rendered verbatim — which is how a literal
+    // `{"reply": "Confirm shiok one! …` ended up in the scene's speech bubble.
+    const raw = await groqStructuredChat(messages);
     const parsed = extractJson(raw, isReplyWithEnding);
-    res.json(
-      parsed
-        ? { ...parsed, reply: stripWrappingQuotes(parsed.reply) }
-        : { reply: stripWrappingQuotes(raw), endConversation: false },
-    );
+    res.json({
+      reply: capReplyLength(stripWrappingQuotes(parsed ? parsed.reply : salvageReply(raw))),
+      endConversation: parsed ? endsConversation(parsed.endConversation) : false,
+    });
   } catch (err) {
     if (err instanceof GroqNotConfiguredError) {
       res.status(503).json({ error: 'AI Practice is not configured on the server yet.' });
@@ -218,9 +322,81 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string');
 }
 
+interface SuggestionsResponse {
+  suggestions: string[];
+}
+
+function isSuggestionsResponse(value: unknown): value is SuggestionsResponse {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    isStringArray((value as SuggestionsResponse).suggestions)
+  );
+}
+
+interface HarmonySuggestionResponse {
+  arguments: {
+    response?: string;
+    suggestions: string[];
+  };
+}
+
+function isHarmonySuggestionResponse(value: unknown): value is HarmonySuggestionResponse {
+  if (typeof value !== 'object' || value === null) return false;
+  const args = (value as HarmonySuggestionResponse).arguments;
+  return (
+    typeof args === 'object' &&
+    args !== null &&
+    (typeof args.response === 'string' || isStringArray(args.suggestions))
+  );
+}
+
+export function parseSuggestions(raw: string): string[] {
+  const json = extractJson(raw, isSuggestionsResponse);
+  if (json) return json.suggestions;
+
+  const harmony = extractJson(raw, isHarmonySuggestionResponse);
+  if (harmony) {
+    if (typeof harmony.arguments.response === 'string') {
+      return parseSuggestionLines(harmony.arguments.response);
+    }
+    return harmony.arguments.suggestions;
+  }
+
+  return parseSuggestionLines(raw);
+}
+
+function parseSuggestionLines(raw: string): string[] {
+  const lines = raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  // Usually one option per line — but the model sometimes runs all three
+  // together ("1. … 2. … 3. …"), which used to reach the UI as a single
+  // paragraph-long chip. Split on the markers themselves in that case.
+  const parts = lines.length > 1 ? lines : raw.split(/(?=\b\d+[.)]\s)/);
+
+  return parts
+    .map((part) => part.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, '').trim())
+    .filter(Boolean)
+    .slice(0, 3);
+}
+
 aiPracticeRouter.post('/suggestions', async (req, res) => {
-  const body = req.body as SuggestionsRequestBody;
+  const body = (req.body && typeof req.body === 'object' && !Array.isArray(req.body)
+    ? req.body
+    : {}) as SuggestionsRequestBody;
   const { history, unlockedWords } = body;
+
+  if (
+    !isValidHistory(history) ||
+    !isValidPersonaContext(body) ||
+    !isValidUnlockedWords(unlockedWords)
+  ) {
+    res.status(400).json({ error: 'Invalid request.' });
+    return;
+  }
 
   const systemPrompt = [
     buildSystemPrompt(body),
@@ -239,22 +415,24 @@ aiPracticeRouter.post('/suggestions', async (req, res) => {
     unlockedWords && unlockedWords.length > 0
       ? `Exactly one of the 3 options should naturally work in one of these Singlish terms the learner already knows: ${unlockedWords.join(', ')}. The other two should be plain English. Never put a Singlish word outside that list into the learner's mouth.`
       : "The learner hasn't been taught any Singlish terms yet, so write all 3 options in plain, natural English.",
-    'Respond with ONLY a JSON array of exactly 3 strings — no other text, no markdown.',
+    'Respond with exactly 3 options on separate lines. Start each line with a number and a period. Do not use JSON, tool calls, markdown fences, or any explanation.',
   ]
     .filter(Boolean)
     .join(' ');
 
   const messages: GroqChatMessage[] = [
     { role: 'system', content: systemPrompt },
-    ...(history ?? []).map((m) => ({
+    // Only the recent turns are worth sending: older ones add tokens without
+  // changing the reply, and the raw list grows unbounded as a scene runs.
+  ...(history ?? []).slice(-MAX_HISTORY_MESSAGES).map((m) => ({
       role: (m.role === 'user' ? 'user' : 'assistant') as GroqChatMessage['role'],
       content: m.text,
     })),
   ];
 
   try {
-    const raw = await groqStructuredChat(messages);
-    const suggestions = extractJson(raw, isStringArray) ?? [];
+    const raw = await groqSuggestions(messages);
+    const suggestions = parseSuggestions(raw);
     res.json({ suggestions: suggestions.slice(0, 3).map(stripWrappingQuotes) });
   } catch (err) {
     if (err instanceof GroqNotConfiguredError) {

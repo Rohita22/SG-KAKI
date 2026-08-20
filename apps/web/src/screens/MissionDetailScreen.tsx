@@ -4,6 +4,7 @@ import type { Lesson } from '@/content/types';
 import { activeCountryPack } from '@/content/activeCountryPack';
 import { useProgress } from '@/state/useProgress';
 import { getMissionStatus } from '@/game/unlocks';
+import { unlockAllContentEnabled } from '@/game/testMode';
 import { LessonRow, type LessonStatus } from '@/components/missions/LessonRow';
 import { MissionSummaryPanel } from '@/components/missions/MissionSummaryPanel';
 import { ScreenBackdrop } from '@/components/shell/ScreenBackdrop';
@@ -38,6 +39,7 @@ export function MissionDetailScreen() {
   function statusFor(index: number, lesson: Lesson): LessonStatus {
     if (state.completedLessonIds.includes(lesson.id)) return 'completed';
     if (missionStatus === 'locked') return 'locked';
+    if (unlockAllContentEnabled()) return 'active';
     if (index === firstIncompleteIndex) return 'active';
     return 'locked';
   }

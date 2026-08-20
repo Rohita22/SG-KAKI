@@ -1,4 +1,5 @@
 import type { Mission } from '@/content/types';
+import { unlockAllContentEnabled } from './testMode';
 
 /**
  * A mission is unlocked once every prerequisite mission is completed.
@@ -8,6 +9,8 @@ export function getUnlockedMissionIds(
   completedMissionIds: string[],
   missions: Mission[],
 ): string[] {
+  if (unlockAllContentEnabled()) return missions.map((mission) => mission.id);
+
   const completed = new Set(completedMissionIds);
   return missions
     .filter((m) => m.prerequisiteMissionIds.every((id) => completed.has(id)))

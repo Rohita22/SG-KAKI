@@ -83,6 +83,9 @@ those routes; nothing crashes).
 - `apps/web/.env.local` (optional): `VITE_API_BASE_URL`, only needed if the
   frontend and backend end up deployed to different origins. Leave unset for
   local dev and same-origin deployments.
+  - `VITE_UNLOCK_ALL_CONTENT=true` enables a development test mode that opens
+    every mission, lesson, phrase, culture topic, and AI Practice scenario.
+  - `VITE_UNLOCK_ALL_SCENARIOS=true` remains available for AI Practice only.
 
 ## Project layout
 

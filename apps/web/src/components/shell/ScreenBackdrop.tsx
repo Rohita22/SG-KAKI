@@ -16,7 +16,7 @@ export function ScreenBackdrop({ image }: { image: string }) {
           overflow-hidden ancestor becomes the nearest scroll container for
           `sticky` purposes, which would anchor this to that (never-scrolled)
           wrapper instead of the page's actual scrolling element. */}
-      <div className="sticky top-0 h-dvh w-full overflow-hidden">
+      <div className="sticky top-0 h-full min-h-dvh w-full overflow-hidden">
         <div
           className="size-full bg-cover bg-center bg-no-repeat"
           style={{ backgroundImage: `url(${image})` }}

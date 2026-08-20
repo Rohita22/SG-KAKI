@@ -23,13 +23,13 @@ export function AIPracticeHubScreen() {
 
       <div className="relative z-10">
         <div className="flex items-center gap-2">
-          <h1 className="text-xl font-extrabold text-sg-navy lg:text-2xl">AI Practice</h1>
+          <h1 className="text-xl font-extrabold text-sg-navy lg:text-2xl">Quests</h1>
           <span className="rounded-full bg-sg-xp/20 px-2 py-0.5 text-[10px] font-black text-sg-navy">
             BETA
           </span>
         </div>
         <p className="mt-1 text-sm text-sg-navy/50">
-          Practice real conversations with an AI classmate — new scenarios unlock as you progress.
+          Take on real conversations with new quests unlocking as you progress.
         </p>
 
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

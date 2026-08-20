@@ -213,41 +213,6 @@ export interface AIPracticeCompletionScript {
   closingCaption?: string;
 }
 
-/** A pick-the-right-item interaction that replaces chat for one stage of a
- * staged scenario (e.g. picking a tissue packet out of a bag to chope a
- * table). Correct pick advances the stage immediately — there's no typing. */
-export interface AIPracticeStageMinigame {
-  prompt: string;
-  items: { id: string; label: string; image: string }[];
-  correctItemId: string;
-}
-
-/** One beat of a multi-stage scenario — its own background/character art and
- * its own goal for the AI persona, chained together into one long scene
- * (e.g. Hawker Centre Lunch: find a table -> chope it -> queue -> eat ->
- * return the tray). See `AIPracticeScenario.stages`. */
-export interface AIPracticeStage {
-  id: string;
-  /** What the persona is trying to accomplish this beat — sent to the
-   * backend as `context` in place of the scenario-level `setup` while this
-   * stage is active. Phrase it as an instruction ("suggest finding a
-   * table"), not a scripted line — the AI still generates the actual line,
-   * same as `autoOpen` today. */
-  goal: string;
-  visualScene: AIPracticeVisualScene;
-  /** A short clip played full-bleed over the scene when this stage opens, as
-   * the transition into it (the bus pulling in, the bell being pressed). The
-   * stage's `visualScene` is what remains on screen once it finishes, so the
-   * clip's last frame should match that background. Skippable; absent = the
-   * stage opens straight into chat. */
-  cutsceneVideo?: string;
-  minTurns: number;
-  maxTurns: number;
-  /** When set, this stage has no chat — a correct pick advances immediately
-   * and `minTurns`/`maxTurns` are ignored. */
-  minigame?: AIPracticeStageMinigame;
-}
-
 export interface AIPracticeScenario {
   id: string;
   title: string;
@@ -269,14 +234,12 @@ export interface AIPracticeScenario {
   className?: string;
   /** Real illustrated scene (background + character art). Takes priority over `sceneKey`. */
   visualScene?: AIPracticeVisualScene;
-  /** A multi-beat scene chaining several backgrounds/goals together (see
-   * `AIPracticeStage`). Takes priority over `visualScene` when present —
-   * each stage supplies its own visual scene as it becomes active. */
-  stages?: AIPracticeStage[];
   /** If true, the AI persona sends the first message instead of waiting on the player. */
   autoOpen?: boolean;
-  /** Scripted ending sequence. Absent = falls back to a manual "Finish Practice" button.
-   * For a staged scenario, this fires once, after the final stage. */
+  /** Fixed first line for `autoOpen`, used instead of generating one. The opener
+   * sets up the whole scene, so it is worth having it read the same every time. */
+  openingLine?: string;
+  /** Scripted ending sequence. Absent = falls back to a manual "Finish Practice" button. */
   completionScript?: AIPracticeCompletionScript;
   /** Phrase categories relevant to this scenario's "Try using" hints — keeps
    * e.g. food vocab from showing up in a classroom chat. Absent = no filter. */
@@ -377,10 +340,6 @@ export interface ChatMessage {
   role: 'user' | 'ai';
   text: string;
   timestamp: string;
-  /** Which stage of a staged scenario (`AIPracticeScenario.stages`) this
-   * message belongs to. Absent for non-staged scenarios and for messages
-   * sent before this field existed. */
-  stageId?: string;
 }
 
 export interface ProgressState {

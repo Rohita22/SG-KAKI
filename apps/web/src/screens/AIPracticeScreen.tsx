@@ -10,6 +10,8 @@ import { ConversationControls } from '@/components/practice/ConversationControls
 import { Button } from '@/components/ui/Button';
 import { ChallengeScene } from '@/components/challenges/scenes/ChallengeScene';
 import { VisualNovelScene } from '@/components/practice/VisualNovelScene';
+import { HawkerScene } from '@/components/practice/scene3/HawkerScene';
+import { CommuteScene } from '@/components/practice/scene4/CommuteScene';
 
 // Natural-ending policy shared by every scenario, scripted or not: never
 // finish before MIN_TURNS_TO_FINISH even if the AI signals readiness early,
@@ -18,6 +20,15 @@ import { VisualNovelScene } from '@/components/practice/VisualNovelScene';
 // (visualScene + completionScript) define their own minTurns/maxTurns instead.
 const MIN_TURNS_TO_FINISH = 2;
 const MAX_TURNS_TO_FINISH = 6;
+
+// Scenes 3 and 4 each own a self-contained stage component, separate from the
+// shared visual-novel one scenes 1 and 2 use. Each closes its own session and
+// awards its own XP, so the generic "Finish Practice" button below the stage
+// would be a duplicate — which is why the ladder and that guard read the same
+// set rather than each carrying their own list of ids to forget to update.
+const HAWKER_SCENARIO_ID = 'hawker-lunch';
+const COMMUTE_SCENARIO_ID = 'commute-to-changi';
+const SELF_CONTAINED_SCENE_IDS = new Set([HAWKER_SCENARIO_ID, COMMUTE_SCENARIO_ID]);
 
 const PRACTICE_SKILLS = [
   'Casual communication',
@@ -37,10 +48,8 @@ export function AIPracticeScreen() {
     suggestionsLoading,
     readyToEnd,
     sendUserMessage,
+    openFrame,
     restart,
-    stage,
-    stageTurnCount,
-    resolveMinigamePick,
   } = useAIPractice(scenarioId ?? '');
   const [draft, setDraft] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -58,23 +67,13 @@ export function AIPracticeScreen() {
   const turnCount = history.filter((m) => m.role === 'user').length;
   const stepCount = Math.min(4, turnCount + 1);
 
-  // A staged scenario resolves its own visual scene/turn count per current
-  // stage rather than across the whole conversation — otherwise turns from
-  // earlier stages would trip the final stage's scripted ending early.
-  const isFinalStage =
-    !scenario.stages || (stage && scenario.stages[scenario.stages.length - 1].id === stage.id);
-  const sceneVisualScene = stage?.visualScene ?? scenario.visualScene;
-  const sceneTurnCount = stage ? stageTurnCount : turnCount;
-  // Only feed the scripted ending in once the final stage is reached — it's
-  // otherwise identical to `scenario.completionScript` every stage of the way.
-  const sceneCompletionScript = isFinalStage ? scenario.completionScript : undefined;
-
   // A scripted ending closes the session in-scene, so the manual "Finish"
   // button below the stage would be a duplicate. Not gated on the arriving
   // third character: a scene can close on the persona alone.
-  const hasScriptedEnding = Boolean(sceneVisualScene && scenario.completionScript);
+  const hasScriptedEnding = Boolean(scenario.visualScene && scenario.completionScript);
   const canFinish =
     !hasScriptedEnding &&
+    !SELF_CONTAINED_SCENE_IDS.has(scenario.id) &&
     turnCount >= MIN_TURNS_TO_FINISH &&
     (readyToEnd || turnCount >= MAX_TURNS_TO_FINISH);
 
@@ -109,13 +108,13 @@ export function AIPracticeScreen() {
   return (
     <div>
       <div className="flex items-center gap-2">
-        <h1 className="text-xl font-extrabold text-sg-navy lg:text-2xl">AI Practice</h1>
+        <h1 className="text-xl font-extrabold text-sg-navy lg:text-2xl">Quests</h1>
         <span className="rounded-full bg-sg-xp/20 px-2 py-0.5 text-[10px] font-black text-sg-navy">
           BETA
         </span>
       </div>
       <p className="mt-1 text-sm text-sg-navy/50">
-        Practice a real conversation with an AI classmate.
+        Complete this conversation quest with an AI persona.
       </p>
 
       <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-[300px_1fr] lg:items-start">
@@ -165,24 +164,51 @@ export function AIPracticeScreen() {
         </div>
 
         <div>
-          {sceneVisualScene ? (
-            <VisualNovelScene
-              visualScene={sceneVisualScene}
+          {scenario.id === COMMUTE_SCENARIO_ID ? (
+            <CommuteScene
+              completionXp={scenario.completionXp}
+              onSessionComplete={handleSessionComplete}
+              onRestart={handleRestart}
+              // Back to the Quests hub, not the progress screen — the XP is
+              // already banked on the end card.
+              onDone={() => navigate('/practice')}
+            />
+          ) : scenario.id === HAWKER_SCENARIO_ID ? (
+            <HawkerScene
               personaName={scenario.personaName}
               history={history}
               isTyping={isTyping}
-              turnCount={sceneTurnCount}
+              suggestions={suggestions}
+              suggestionsLoading={suggestionsLoading}
+              readyToEnd={readyToEnd}
+              draft={draft}
+              onDraftChange={setDraft}
+              onSend={(text, beat) => {
+                setDraft('');
+                void sendUserMessage(text, beat);
+              }}
+              onOpenFrame={(beat, nudge) => void openFrame(beat, nudge)}
+              completionXp={scenario.completionXp}
+              onSessionComplete={handleSessionComplete}
+              onRestart={handleRestart}
+              // Back to the Quests hub the scene was launched from, not the
+              // progress screen — the XP is already banked on the end card.
+              onDone={() => navigate('/practice')}
+            />
+          ) : scenario.visualScene ? (
+            <VisualNovelScene
+              visualScene={scenario.visualScene}
+              personaName={scenario.personaName}
+              history={history}
+              isTyping={isTyping}
+              turnCount={turnCount}
               suggestions={suggestions}
               suggestionsLoading={suggestionsLoading}
               readyToEnd={readyToEnd}
               fallbackOpeners={scenario.suggestedOpeners}
               singlishHints={singlishHints}
-              completionScript={sceneCompletionScript}
+              completionScript={scenario.completionScript}
               completionXp={scenario.completionXp}
-              minigame={stage?.minigame}
-              onMinigamePick={resolveMinigamePick}
-              cutsceneVideo={stage?.cutsceneVideo}
-              currentStageId={stage?.id}
               draft={draft}
               onDraftChange={setDraft}
               onSend={handleSend}

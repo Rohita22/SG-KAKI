@@ -1,18 +1,8 @@
 import { env } from '../env.js';
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-// llama-3.3-70b-versatile's free-tier daily quota is shared/tight; this
-// smaller model has its own separate quota on Groq (rate limits are
-// per-model) and is plenty capable for short in-character replies, which are
-// by far the most frequent call. Override via GROQ_MODEL if needed.
-const DEFAULT_GROQ_MODEL = 'llama-3.1-8b-instant';
-// The smaller model doesn't reliably follow the "respond with ONLY a JSON
-// array" + role-switch instruction the suggestions endpoint needs — it just
-// chats normally instead, so we get nothing to parse. That endpoint is much
-// lower-frequency than plain replies, so spending the stronger model's
-// tighter quota there specifically is a good trade. Override via
-// GROQ_STRUCTURED_MODEL if needed.
-const DEFAULT_STRUCTURED_MODEL = 'llama-3.3-70b-versatile';
+const DEFAULT_GROQ_MODEL = 'openai/gpt-oss-20b';
+const DEFAULT_STRUCTURED_MODEL = 'openai/gpt-oss-20b';
 
 export class GroqNotConfiguredError extends Error {
   constructor() {
@@ -21,6 +11,9 @@ export class GroqNotConfiguredError extends Error {
   }
 }
 
+const REPLY_COMPLETION_TOKENS = 400;
+const SUGGESTION_COMPLETION_TOKENS = 250;
+
 export type GroqChatRole = 'system' | 'user' | 'assistant';
 
 export interface GroqChatMessage {
@@ -28,7 +21,47 @@ export interface GroqChatMessage {
   content: string;
 }
 
-async function callGroq(messages: GroqChatMessage[], model: string): Promise<string> {
+function isReasoningModel(model: string): boolean {
+  return model.includes('gpt-oss') || model.includes('qwen');
+}
+
+/** GPT OSS sometimes answers with a Harmony tool-call envelope instead of plain
+ * content — {"name":"assistant","arguments":{"role":"assistant","content":"…"}} —
+ * which then reaches the player as raw JSON in a speech bubble. It shows up both
+ * in normal responses and in `failed_generation` on a 400, so unwrap it here, at
+ * the one point every caller goes through, rather than in each route.
+ *
+ * Deliberately narrow: a legitimate `{"reply":…,"endConversation":…}` answer has
+ * no `arguments`/`role` wrapper, so it passes through untouched for the route to
+ * parse as it always did. */
+export function unwrapHarmonyEnvelope(text: string): string {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith('{')) return trimmed;
+
+  try {
+    const parsed = JSON.parse(trimmed) as Record<string, unknown>;
+    const rawArgs = parsed.arguments ?? parsed.parameters;
+    const args = (typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs) as
+      | Record<string, unknown>
+      | undefined;
+
+    const inner = args ?? (typeof parsed.role === 'string' ? parsed : undefined);
+    for (const key of ['content', 'response', 'reply', 'text']) {
+      const value = inner?.[key];
+      if (typeof value === 'string' && value.trim()) return value.trim();
+    }
+  } catch {
+    // Not JSON after all — the original text is the answer.
+  }
+  return trimmed;
+}
+
+async function callGroq(
+  messages: GroqChatMessage[],
+  model: string,
+  structured = false,
+  maxCompletionTokens = REPLY_COMPLETION_TOKENS,
+): Promise<string> {
   if (!env.groqApiKey) {
     throw new GroqNotConfiguredError();
   }
@@ -43,12 +76,25 @@ async function callGroq(messages: GroqChatMessage[], model: string): Promise<str
       model,
       messages,
       temperature: 0.8,
-      max_tokens: 200,
+      max_completion_tokens: maxCompletionTokens,
+      ...(isReasoningModel(model) ? { reasoning_effort: 'low' } : {}),
+      ...(structured ? { response_format: { type: 'json_object' } } : {}),
     }),
   });
 
   if (!response.ok) {
     const errText = await response.text().catch(() => '');
+    try {
+      const errorBody = JSON.parse(errText) as {
+        error?: { code?: string; failed_generation?: string };
+      };
+      const failedGeneration = errorBody.error?.failed_generation;
+      if (errorBody.error?.code === 'tool_use_failed' && failedGeneration) {
+        return unwrapHarmonyEnvelope(failedGeneration);
+      }
+    } catch {
+      // Keep the original API error when the response body is not JSON.
+    }
     throw new Error(`Groq API error (${response.status}): ${errText}`);
   }
 
@@ -59,16 +105,26 @@ async function callGroq(messages: GroqChatMessage[], model: string): Promise<str
   if (typeof reply !== 'string') {
     throw new Error('Unexpected Groq API response shape.');
   }
-  return reply.trim();
+  return unwrapHarmonyEnvelope(reply);
 }
 
-/** For plain in-character replies — high frequency, doesn't need strict JSON output. */
 export function groqChat(messages: GroqChatMessage[]): Promise<string> {
   return callGroq(messages, env.groqModel ?? DEFAULT_GROQ_MODEL);
 }
 
-/** For calls that need reliably-parseable structured output (e.g. a JSON
- * array/object) — lower frequency, worth spending the stronger model on. */
+export function groqSuggestions(messages: GroqChatMessage[]): Promise<string> {
+  return callGroq(
+    messages,
+    env.groqModel ?? DEFAULT_GROQ_MODEL,
+    false,
+    SUGGESTION_COMPLETION_TOKENS,
+  );
+}
+
 export function groqStructuredChat(messages: GroqChatMessage[]): Promise<string> {
-  return callGroq(messages, env.groqStructuredModel ?? DEFAULT_STRUCTURED_MODEL);
+  return callGroq(
+    messages,
+    env.groqStructuredModel ?? DEFAULT_STRUCTURED_MODEL,
+    true,
+  );
 }

@@ -7,14 +7,14 @@ const TABS = [
   { to: '/map', label: 'Journey', icon: Map, end: false },
   { to: '/field-guide', label: 'Field Guide', icon: Compass, end: false },
   { to: '/progress', label: 'Progress', icon: BarChart3, end: false },
-  { to: '/practice', label: 'AI Practice', icon: MessageCircle, end: false },
+  { to: '/practice', label: 'Quests', icon: MessageCircle, end: false },
 ];
 
 export function BottomNavigation() {
   return (
     <nav
       aria-label="Primary"
-      className="grid grid-cols-4 border-t border-black/5 bg-white/95 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur"
+      className="grid grid-cols-4 border-t border-black/5 bg-white/95 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur lg:hidden"
     >
       {TABS.map(({ to, label, icon: Icon, end }) => (
         <NavLink

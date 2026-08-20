@@ -9,6 +9,9 @@ interface SgBuddyContext {
   phraseWord?: string;
   cultureTopicTitle?: string;
   masteryLabel?: string;
+  /** Where the learner is standing and what they are trying to do, for scenes
+   * where the answer depends on the spot rather than on a lesson. */
+  situation?: string;
 }
 
 interface AskRequestBody {
@@ -17,10 +20,23 @@ interface AskRequestBody {
 }
 
 sgBuddyRouter.post('/ask', async (req, res) => {
-  const { context, question } = req.body as AskRequestBody;
+  const body = (req.body && typeof req.body === 'object' && !Array.isArray(req.body)
+    ? req.body
+    : {}) as AskRequestBody;
+  const { context, question } = body;
 
-  if (!question || typeof question !== 'string') {
+  if (!question || typeof question !== 'string' || question.length > 2_000) {
     res.status(400).json({ error: 'question is required' });
+    return;
+  }
+
+  if (
+    context &&
+    Object.values(context).some(
+      (value) => value !== undefined && (typeof value !== 'string' || value.length > 500),
+    )
+  ) {
+    res.status(400).json({ error: 'Invalid context.' });
     return;
   }
 
@@ -28,6 +44,13 @@ sgBuddyRouter.post('/ask', async (req, res) => {
     ? [
         context.missionTitle && context.lessonTitle
           ? `The learner is on "${context.missionTitle}" → "${context.lessonTitle}".`
+          : '',
+        // First-person and present-tense on purpose: this is someone standing
+        // somewhere real and stuck, not someone reading a lesson. Answering
+        // "which platform" generically is useless — the answer depends entirely
+        // on the spot they are in.
+        context.situation
+          ? `Right now: ${context.situation} Answer for that exact spot — tell them concretely what to do next and what to look for, not general advice.`
           : '',
         context.phraseWord ? `They're asking about the phrase "${context.phraseWord}".` : '',
         context.cultureTopicTitle

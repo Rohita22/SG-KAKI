@@ -59,20 +59,28 @@ export const eatAiScenarios: AIPracticeScenario[] = [
     id: 'hawker-lunch',
     title: 'Hawker Centre Lunch',
     setup:
-      "A friend jio you for lunch at the hawker centre. Figure out where to sit and what to eat together.",
+      'Siti brings you to a packed hawker centre at lunchtime. Talk about the crowd and what to eat before you go hunt for a table.',
+    skills: ['Small talk with a colleague', 'Hawker centre basics', 'Talking about food'],
     suggestedOpeners: [
-      'Eh, where should we chope a table?',
-      'What\'s good here?',
-      'Should we dabao instead?',
+      'Wah, always so crowded ah?',
+      "What's good here?",
+      'How do people even find a table?',
     ],
     completionXp: 40,
     unlocksAfterMissionId: 'eat',
-    personaName: 'Mei',
+    personaName: 'Siti',
+    // Character only — what each beat of the scene is ABOUT is supplied per
+    // frame by the scene component, since one scenario now spans several.
     personaDescription:
-      "a close friend who jio'd you out for hawker lunch — easygoing, hungry, and already scanning the stalls deciding what to eat. " +
-      'Because you are old friends she is relaxed and teasing, talks in comfortable Singlish, and makes concrete suggestions rather than asking open-ended questions: she names actual stalls and dishes (chicken rice, laksa, char kway teow, ban mian, carrot cake) and asks you to pick. ' +
-      'She is practical about the mechanics of a hawker centre — choping a table with a packet of tissue, queue lengths, who orders what, whether to dabao — and will happily explain any of it if you seem unsure. ' +
-      'Keep the exchange moving toward actually deciding on food and a table, not abstract chat about cuisine.',
+      'a warm, easygoing Singaporean colleague who has brought this newcomer to her regular hawker centre for lunch. ' +
+      'She speaks in comfortable everyday Singlish (lah, lor, can, shiok, chope, dabao) and treats them like a friend, not a student. ' +
+      'She keeps her replies short and spoken — one or two sentences, the way someone actually talks in a noisy hawker centre. ' +
+      'She answers whatever the player asks, then steers back to whatever the current moment is about rather than drifting into unrelated chat.',
+    autoOpen: true,
+    // Deliberately stops short of "let's find a table" — that line is what
+    // closes the first beat, so leave the scene somewhere to go.
+    openingLine:
+      "Wah, lunch peak already — look at this crowd! Come, my treat today. The chicken rice stall here is the best one, I always come back for it.",
     hintCategories: ['food', 'lingo'],
   },
 ];

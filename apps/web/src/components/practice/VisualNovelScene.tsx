@@ -3,13 +3,11 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { History } from 'lucide-react';
 import type {
   AIPracticeCompletionScript,
-  AIPracticeStageMinigame,
   AIPracticeVisualScene,
   ChatMessage,
 } from '@/content/types';
 import { clsx } from '@/lib/clsx';
 import { Button } from '@/components/ui/Button';
-import { BagItemPicker } from './BagItemPicker';
 import { ChatBubble, TypingBubble } from './ChatBubble';
 import { ConversationControls, type SinglishHint } from './ConversationControls';
 
@@ -158,10 +156,6 @@ export function VisualNovelScene({
   singlishHints = [],
   completionScript,
   completionXp,
-  minigame,
-  onMinigamePick,
-  cutsceneVideo,
-  currentStageId,
   draft,
   onDraftChange,
   onSend,
@@ -173,10 +167,7 @@ export function VisualNovelScene({
   personaName?: string;
   history: ChatMessage[];
   isTyping: boolean;
-  /** User turns to weigh against `completionScript`'s min/max turns. For a
-   * staged scenario this is scoped to the current stage, not the whole
-   * conversation — otherwise turns from earlier stages would trigger the
-   * scripted ending long before the final stage is reached. */
+  /** User turns to weigh against `completionScript`'s min/max turns. */
   turnCount: number;
   /** AI-generated reply options for what the learner could say next, based on
    * the conversation so far — not a static list. */
@@ -190,19 +181,6 @@ export function VisualNovelScene({
   singlishHints?: SinglishHint[];
   completionScript?: AIPracticeCompletionScript;
   completionXp?: number;
-  /** When set, replaces the chat footer with a pick-the-item interaction for
-   * the current stage (e.g. choping a table with a tissue packet). */
-  minigame?: AIPracticeStageMinigame;
-  onMinigamePick?: (itemId: string) => boolean;
-  /** Clip for the stage that just opened, played over the scene before its
-   * chat starts. Changing it (i.e. advancing to a stage that has one) starts
-   * playback; it ends on the clip finishing or the player skipping. */
-  cutsceneVideo?: string;
-  /** For a staged scenario: scopes the floating speech bubbles to this
-   * stage's own messages, so a fresh stage doesn't open still showing the
-   * previous stage's last line hanging over a character. Full `history` is
-   * still used for the transcript toggle, which should show everything. */
-  currentStageId?: string;
   draft: string;
   onDraftChange: (value: string) => void;
   onSend: (text: string) => void;
@@ -215,16 +193,9 @@ export function VisualNovelScene({
 }) {
   const [showTranscript, setShowTranscript] = useState(false);
   const [phase, setPhase] = useState<CutscenePhase>('chat');
-  // Keyed on the clip's own URL rather than a boolean, so arriving at a stage
-  // replays only when that stage actually brings a different clip.
-  const [playingVideo, setPlayingVideo] = useState<string | undefined>(cutsceneVideo);
   const sessionCompleteFired = useRef(false);
   const endCardRef = useRef<HTMLDivElement>(null);
   const reduceMotion = useReducedMotion();
-
-  useEffect(() => {
-    setPlayingVideo(cutsceneVideo);
-  }, [cutsceneVideo]);
 
   // The end card can land below the fold of the page's scroll container —
   // bring it into view so "Try Again"/"Done" aren't left half-hidden behind
@@ -244,17 +215,11 @@ export function VisualNovelScene({
     }
   }, [history.length, phase]);
 
-  // Scoped to the current stage (when staged) so a fresh stage doesn't open
-  // still showing a speech bubble left over from the previous one.
-  const bubbleHistory = currentStageId
-    ? history.filter((m) => m.stageId === currentStageId)
-    : history;
-
   // Tracked independently (not just "the last message overall") so the
   // player's line stays on screen through the classmate's typing + reply,
   // instead of vanishing the instant the other side responds.
-  const lastUserMessage = [...bubbleHistory].reverse().find((m) => m.role === 'user');
-  const lastAiMessage = [...bubbleHistory].reverse().find((m) => m.role === 'ai');
+  const lastUserMessage = [...history].reverse().find((m) => m.role === 'user');
+  const lastAiMessage = [...history].reverse().find((m) => m.role === 'ai');
 
   // Scripted ending: the AI itself judges when the conversation reaches a
   // natural stopping point (readyToEnd) rather than cutting off at a fixed
@@ -372,9 +337,14 @@ export function VisualNovelScene({
           <History className="size-4.5" />
         </button>
 
+        {/* Full-height columns, sprite pinned to the bottom of each: that lets
+            a bubble hang from the TOP of the frame and grow DOWNWARD, so a long
+            line runs into open air instead of off the top edge, where the
+            frame's overflow-hidden used to clip it — tall sprites leave under
+            90px of headroom above their heads. */}
         <div
           className={clsx(
-            'absolute inset-x-0 bottom-0 flex items-end pb-2 sm:pb-4',
+            'pointer-events-none absolute inset-0 flex items-stretch pb-2 pt-3 sm:pb-4',
             wideSpread
               ? // Inset from the frame edges so the characters sit in the open
                 // middle of the counter rather than on top of the props
@@ -386,11 +356,11 @@ export function VisualNovelScene({
           {/* z-20 lifts the player above the foreground overlay (z-10), so a
               scene can put the persona behind a counter while the player
               stands in front of it — the two sides of a stall transaction. */}
-          <div className="relative z-20 flex flex-col items-center">
+          <div className="relative z-20 flex flex-col items-center justify-end">
             {/* pr-* pulls the bubble's anchor further from center than the
                 character gap alone, so two simultaneous bubbles never sit
                 close enough to visually merge into one white shape. */}
-            <div className="absolute inset-x-0 bottom-full mb-2 pr-3 sm:pr-4 lg:pr-6">
+            <div className="absolute inset-x-0 top-0 pr-3 sm:pr-4 lg:pr-6">
               <AnimatePresence mode="popLayout">
                 {phase === 'chat' && lastUserMessage && (
                   <SpeechBubble key={lastUserMessage.id} text={lastUserMessage.text} anchor="right" />
@@ -411,10 +381,10 @@ export function VisualNovelScene({
             )}
           </div>
 
-          <div className="relative flex flex-col items-center">
+          <div className="relative flex flex-col items-center justify-end">
             {/* z-30 keeps the bubble above the foreground overlay even though
                 the sprite below it sits behind that overlay. */}
-            <div className="absolute inset-x-0 bottom-full z-30 mb-2 pl-3 sm:pl-4 lg:pl-6">
+            <div className="absolute inset-x-0 top-0 z-30 pl-3 sm:pl-4 lg:pl-6">
               <AnimatePresence mode="popLayout">
                 {phase === 'chat' && isTyping ? (
                   <TypingSpeechBubble />
@@ -441,8 +411,8 @@ export function VisualNovelScene({
           </div>
 
           {visualScene.teacherImage && phase !== 'chat' && (
-            <div className="relative flex flex-col items-center">
-              <div className="absolute inset-x-0 bottom-full mb-2 pl-3 sm:pl-4 lg:pl-6">
+            <div className="relative flex flex-col items-center justify-end">
+              <div className="absolute inset-x-0 top-0 pl-3 sm:pl-4 lg:pl-6">
                 <AnimatePresence mode="popLayout">
                   {phase === 'teacherEnter' && completionScript?.teacherLine && (
                     <SpeechBubble key="teacher-line" text={completionScript.teacherLine} anchor="left" />
@@ -476,34 +446,6 @@ export function VisualNovelScene({
             transition={{ duration: 0.6 }}
             className="pointer-events-none absolute inset-0 z-10 size-full object-cover"
           />
-        )}
-
-        {/* Above every scene layer (foreground z-10, sprites z-20, bubbles
-            z-30): while a stage's clip runs it IS the scene, and the still
-            layers underneath are what it hands back to on the last frame.
-            muted + playsInline because autoplay is otherwise blocked on
-            mobile Safari, which would leave a frozen first frame with no way
-            past it but the skip button. */}
-        {playingVideo && (
-          <motion.div
-            key={playingVideo}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 z-40 bg-black"
-          >
-            <video
-              src={playingVideo}
-              autoPlay
-              muted
-              playsInline
-              onEnded={() => setPlayingVideo(undefined)}
-              // A missing or unplayable clip must not strand the player on a
-              // black box — drop straight through to the stage's chat.
-              onError={() => setPlayingVideo(undefined)}
-              className="size-full object-cover"
-            />
-          </motion.div>
         )}
       </div>
 
@@ -545,20 +487,10 @@ export function VisualNovelScene({
             </Button>
           </div>
         </div>
-      ) : playingVideo ? (
-        // Replaces the chat footer for the length of the clip, so the player
-        // can't type into a conversation that hasn't started yet.
-        <div className="flex items-center justify-center border-t border-black/5 px-5 py-4">
-          <Button variant="secondary" onClick={() => setPlayingVideo(undefined)}>
-            Skip
-          </Button>
-        </div>
       ) : phase !== 'chat' ? (
         <div className="border-t border-black/5 px-5 py-4 text-center text-sm font-semibold text-sg-navy/50">
           {completionScript?.closingCaption ?? 'Class is starting…'}
         </div>
-      ) : minigame ? (
-        <BagItemPicker minigame={minigame} onPick={onMinigamePick ?? (() => false)} />
       ) : (
         <ConversationControls
           turnCount={turnCount}

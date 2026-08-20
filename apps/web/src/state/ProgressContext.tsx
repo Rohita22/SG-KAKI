@@ -12,6 +12,7 @@ import { loadProgress, saveProgress } from '@/services/storage/progressStorage';
 import { progressReducer } from './progressReducer';
 import { applyChallengeCompletion, type CompletionEvents } from '@/game/progression';
 import { updateStreak, toDateKey } from '@/game/streak';
+import { withAllContentUnlocked } from '@/game/testMode';
 
 export interface ProgressContextValue {
   state: ProgressState;
@@ -28,6 +29,10 @@ const SAVE_DEBOUNCE_MS = 300;
 
 export function ProgressProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(progressReducer, undefined, loadProgress);
+  const exposedState = useMemo(
+    () => withAllContentUnlocked(state, activeCountryPack),
+    [state],
+  );
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchedStreak = useRef(false);
 
@@ -58,7 +63,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<ProgressContextValue>(
     () => ({
-      state,
+      state: exposedState,
       completeChallenge: (challengeId, xpAwarded) => {
         const { nextState, events } = applyChallengeCompletion(
           state,
@@ -82,7 +87,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'INCREMENT_PHRASE_MASTERY', phraseId });
       },
     }),
-    [state],
+    [exposedState, state],
   );
 
   return (
