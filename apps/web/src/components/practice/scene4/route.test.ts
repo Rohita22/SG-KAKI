@@ -25,6 +25,7 @@ describe('the graph is wired up', () => {
           expect(() => nodeById(hotspot.to), `${node.id} → ${hotspot.label}`).not.toThrow();
         }
       } else {
+        expect(node.direction.trim().length, `${node.id} direction`).toBeGreaterThan(2);
         expect(() => nodeById(node.arriveAt), `${node.id} arriveAt`).not.toThrow();
         if (node.crossOverTo) {
           expect(() => nodeById(node.crossOverTo!), `${node.id} crossOverTo`).not.toThrow();
@@ -44,6 +45,13 @@ describe('the graph is wired up', () => {
     for (const ride of allNodes.filter(isRide)) {
       if (ride.alightAt < 0) continue; // wrong-direction ride: no stop is right
       expect(ride.stations[ride.alightAt], `${ride.id} alightAt`).toBeDefined();
+    }
+  });
+
+  it('gives every location offline-safe help', () => {
+    for (const node of allNodes) {
+      expect(node.hint.trim().length, `${node.id} hint`).toBeGreaterThan(10);
+      expect(node.guidance.trim().length, `${node.id} guidance`).toBeGreaterThan(20);
     }
   });
 });

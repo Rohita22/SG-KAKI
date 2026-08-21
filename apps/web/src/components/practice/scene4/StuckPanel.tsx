@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { X, Send, LifeBuoy } from 'lucide-react';
+import { X, Send, LifeBuoy, Navigation } from 'lucide-react';
 import { groqSgBuddyService } from '@/services/sgBuddy/groqSgBuddyService';
 
 /**
@@ -18,6 +18,7 @@ export function StuckPanel({
   onOpenChange,
   caption,
   situation,
+  guidance,
   questions,
 }: {
   open: boolean;
@@ -26,6 +27,8 @@ export function StuckPanel({
   caption: string;
   /** Fed to SG Buddy so the answer is about this spot, not about Singapore. */
   situation: string;
+  /** Always-available direct instructions; help must not depend on the AI API. */
+  guidance: string;
   questions: string[];
 }) {
   const [draft, setDraft] = useState('');
@@ -89,6 +92,13 @@ export function StuckPanel({
               </button>
             </div>
 
+            <div className="mb-3 rounded-2xl border border-sg-blue/15 bg-sg-sky/65 p-3">
+              <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-sg-blue">
+                <Navigation className="size-3.5" /> Do this next
+              </p>
+              <p className="mt-1.5 text-sm font-bold leading-relaxed text-sg-navy">{guidance}</p>
+            </div>
+
             {exchanges.length > 0 && (
               <div className="mb-3 flex flex-col gap-3">
                 {exchanges.map((ex, i) => (
@@ -105,7 +115,9 @@ export function StuckPanel({
             )}
 
             {exchanges.length === 0 && questions.length > 0 && (
-              <div className="mb-3 flex flex-col gap-1.5">
+              <div className="mb-3">
+                <p className="mb-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-sg-navy/35">Ask SG Buddy</p>
+                <div className="flex flex-col gap-1.5">
                 {questions.map((q) => (
                   <button
                     key={q}
@@ -117,6 +129,7 @@ export function StuckPanel({
                     {q}
                   </button>
                 ))}
+                </div>
               </div>
             )}
 

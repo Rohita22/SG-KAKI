@@ -114,11 +114,17 @@ export function AIPracticeScreen() {
         </span>
       </div>
       <p className="mt-1 text-sm text-sg-navy/50">
-        Complete this conversation quest with an AI persona.
+        {scenario.id === COMMUTE_SCENARIO_ID
+          ? 'Navigate Singapore by bus, MRT, and on foot.'
+          : 'Complete this conversation quest with an AI persona.'}
       </p>
 
       <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-[300px_1fr] lg:items-start">
-        <div className="rounded-3xl bg-white p-6 shadow-card lg:sticky lg:top-8">
+        <div
+          className={`rounded-3xl bg-white p-6 shadow-card lg:sticky lg:top-8 ${
+            scenario.id === COMMUTE_SCENARIO_ID ? 'hidden lg:block' : ''
+          }`}
+        >
           <div className="flex items-start justify-between gap-2">
             <div>
               <p className="text-xs font-bold uppercase tracking-wide text-sg-navy/40">

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Clock, LifeBuoy, MapPin, RotateCcw } from 'lucide-react';
+import { ArrowRight, Clock, Lightbulb, LifeBuoy, MapPin, RotateCcw, Sparkles } from 'lucide-react';
 import {
   BUDGET_MIN,
   SECONDS_PER_GAME_MINUTE,
@@ -16,6 +16,9 @@ import {
 import { PlaceView } from './PlaceView';
 import { CROSS_OVER_MIN, RideView, StrandedView } from './RideView';
 import { StuckPanel } from './StuckPanel';
+import { TransitMap } from './TransitMap';
+import { routeStage } from './routeStage';
+import { BoardingView } from './BoardingView';
 
 /**
  * Scene 4 — the commute. Self-contained: it shares no markup with scenes 1-3.
@@ -33,6 +36,7 @@ import { StuckPanel } from './StuckPanel';
 
 type Position =
   | { at: 'place'; id: NodeId }
+  | { at: 'boarding'; id: NodeId; attempt: number }
   | { at: 'ride'; id: NodeId; rideMin: number }
   /** Off at a station that wasn't yours. `rideMin` is kept so re-boarding
    * resumes the journey rather than restarting the line. */
@@ -58,14 +62,17 @@ export function CommuteScene({
   onRestart: () => void;
   onDone: () => void;
 }) {
+  const [started, setStarted] = useState(false);
   const [position, setPosition] = useState<Position>(START);
   const [clockMin, setClockMin] = useState(0);
   const [wrongTurns, setWrongTurns] = useState(0);
   const [status, setStatus] = useState<'playing' | 'failed' | 'arrived'>('playing');
   const [toast, setToast] = useState<string | null>(null);
   const [stuckOpen, setStuckOpen] = useState(false);
+  const [stationDwell, setStationDwell] = useState(false);
   const [checkpoint, setCheckpoint] = useState<Checkpoint | null>(null);
   const xpFired = useRef(false);
+  const lastDwellKey = useRef<string | null>(null);
 
   const node = nodeById(position.id);
   const place = isPlace(node) ? node : undefined;
@@ -81,17 +88,30 @@ export function CommuteScene({
     Boolean(ride.terminus) &&
     stationIndex(ride, position.rideMin) >= ride.stations.length - 1;
 
+  // Hold briefly at every stop. The old continuous clock gave the player only
+  // about one second to read a station name and alight, which tested reflexes
+  // rather than transport awareness.
+  useEffect(() => {
+    if (position.at !== 'ride' || !ride || status !== 'playing') return;
+    const key = `${ride.id}:${stationIndex(ride, position.rideMin)}`;
+    if (lastDwellKey.current === key) return;
+    lastDwellKey.current = key;
+    setStationDwell(true);
+    const timer = setTimeout(() => setStationDwell(false), 1800);
+    return () => clearTimeout(timer);
+  }, [position, ride, status]);
+
   // ── The clock ──────────────────────────────────────────────────────────────
   // Ticks one game minute at a time, and only while actually moving. Frozen
   // whenever the help panel is up, so asking is never what makes you late.
   useEffect(() => {
-    if (position.at !== 'ride' || status !== 'playing' || stuckOpen || atEndOfLine) return;
+    if (!started || position.at !== 'ride' || status !== 'playing' || stuckOpen || stationDwell || atEndOfLine) return;
     const timer = setInterval(() => {
       setClockMin((m) => m + 1);
       setPosition((p) => (p.at === 'ride' ? { ...p, rideMin: p.rideMin + 1 } : p));
     }, SECONDS_PER_GAME_MINUTE * 1000);
     return () => clearInterval(timer);
-  }, [position.at, status, stuckOpen, atEndOfLine]);
+  }, [started, position.at, status, stuckOpen, stationDwell, atEndOfLine]);
 
   // ── Losing ─────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -167,7 +187,7 @@ export function CommuteScene({
 
     const target = nodeById(hotspot.to);
     if (isRide(target)) {
-      setPosition({ at: 'ride', id: target.id, rideMin: 0 });
+      setPosition({ at: 'boarding', id: target.id, attempt: 0 });
       return;
     }
     goToPlace(hotspot.to);
@@ -211,6 +231,8 @@ export function CommuteScene({
     setStatus('playing');
     setToast(null);
     setCheckpoint(null);
+    setStationDwell(false);
+    lastDwellKey.current = null;
     xpFired.current = false;
     onRestart();
   }
@@ -227,19 +249,43 @@ export function CommuteScene({
 
   const caption = place?.caption ?? ride?.line ?? '';
   const situation = place?.situation ?? ride?.situation ?? '';
+  const hint = place?.hint ?? ride?.hint ?? '';
+  const guidance = place?.guidance ?? ride?.guidance ?? '';
   const questions = place?.stuckQuestions ?? ride?.stuckQuestions ?? [];
+  const currentStage = routeStage(position.id);
+
+  if (!started) {
+    return <MissionBriefing onStart={() => setStarted(true)} />;
+  }
+
+  function boardTransit() {
+    if (position.at !== 'boarding') return;
+    setPosition({ at: 'ride', id: position.id, rideMin: 0 });
+  }
+
+  function waitForService() {
+    if (position.at !== 'boarding' || !ride) return;
+    setClockMin((m) => m + ride.waitMin);
+    setToast(`You missed it. The next ${ride.id === 'ride-bus' ? 'bus' : 'train'} is arriving now.`);
+    setPosition({ ...position, attempt: position.attempt + 1 });
+  }
 
   return (
-    <div className="overflow-hidden rounded-3xl bg-white shadow-card">
+    <div className="overflow-hidden rounded-3xl border border-white/70 bg-white shadow-card-lg">
       <Hud
         minutesLeft={minutesLeft}
         wrongTurns={wrongTurns}
-        frozen={position.at !== 'ride' || stuckOpen || status !== 'playing'}
+        frozen={position.at !== 'ride' || stuckOpen || stationDwell || status !== 'playing'}
         onStuck={() => setStuckOpen(true)}
+        onHint={() => setToast(`HINT · ${hint}`)}
         stuckDisabled={status !== 'playing'}
       />
 
-      <div className="relative flex h-[30rem] flex-col sm:h-[34rem]">
+      <div className="border-b border-black/5 bg-slate-50">
+        <TransitMap currentStage={currentStage} compact />
+      </div>
+
+      <div className="relative flex h-[31rem] flex-col sm:h-[35rem]">
         <AnimatePresence>
           {toast && (
             <motion.div
@@ -255,6 +301,7 @@ export function CommuteScene({
 
         {status === 'arrived' ? (
           <EndCard
+            background="/scenes/scene4/environments/changi-business-park.png"
             title="You made it to the office."
             body={
               wrongTurns === 0
@@ -282,6 +329,14 @@ export function CommuteScene({
             }
             secondary={checkpoint ? { label: 'Start again', onClick: restart } : undefined}
           />
+        ) : position.at === 'boarding' && ride ? (
+          <BoardingView
+            key={`${ride.id}:${position.attempt}`}
+            ride={ride}
+            paused={stuckOpen}
+            onBoard={boardTransit}
+            onWait={waitForService}
+          />
         ) : position.at === 'stranded' && ride ? (
           <StrandedView
             ride={ride}
@@ -300,6 +355,7 @@ export function CommuteScene({
           onOpenChange={setStuckOpen}
           caption={caption}
           situation={situation}
+          guidance={guidance}
           questions={questions}
         />
       </div>
@@ -312,12 +368,14 @@ function Hud({
   wrongTurns,
   frozen,
   onStuck,
+  onHint,
   stuckDisabled,
 }: {
   minutesLeft: number;
   wrongTurns: number;
   frozen: boolean;
   onStuck: () => void;
+  onHint: () => void;
   stuckDisabled: boolean;
 }) {
   // Colour is the only warning the player gets, so it has to arrive early
@@ -328,7 +386,7 @@ function Hud({
   const tone = late ? 'text-red-600' : tight ? 'text-amber-600' : 'text-sg-navy';
 
   return (
-    <div className="flex items-center gap-3 border-b border-black/5 px-4 py-3">
+    <div className="flex items-center gap-2 border-b border-black/5 bg-white px-3 py-3 sm:gap-3 sm:px-4">
       <div className="flex shrink-0 items-center gap-1.5">
         <Clock className={`size-4 ${frozen ? 'text-sg-navy/25' : tone}`} />
         <span className={`text-sm font-black tabular-nums ${tone}`}>{minutesLeft}</span>
@@ -357,9 +415,19 @@ function Hud({
 
       <button
         type="button"
+        onClick={onHint}
+        disabled={stuckDisabled}
+        className="flex shrink-0 items-center gap-1 rounded-full border border-sg-xp/50 bg-sg-xp/15 px-2.5 py-1.5 text-[10px] font-black text-sg-navy transition-colors hover:bg-sg-xp/30 disabled:opacity-30 sm:text-[11px]"
+      >
+        <Lightbulb className="size-3.5" />
+        HINT
+      </button>
+
+      <button
+        type="button"
         onClick={onStuck}
         disabled={stuckDisabled}
-        className="flex shrink-0 items-center gap-1.5 rounded-full bg-sg-navy px-3 py-1.5 text-[11px] font-black text-white transition-opacity hover:opacity-90 disabled:opacity-30"
+        className="flex shrink-0 items-center gap-1.5 rounded-full bg-sg-navy px-2.5 py-1.5 text-[10px] font-black text-white transition-opacity hover:opacity-90 disabled:opacity-30 sm:px-3 sm:text-[11px]"
       >
         <LifeBuoy className="size-3.5" />
         STUCK
@@ -368,25 +436,71 @@ function Hud({
   );
 }
 
+function MissionBriefing({ onStart }: { onStart: () => void }) {
+  return (
+    <div className="overflow-hidden rounded-3xl border border-white/70 bg-white shadow-card-lg">
+      <div className="relative overflow-hidden bg-sg-navy px-5 pb-6 pt-7 text-white sm:px-7">
+        <div className="absolute -right-12 -top-16 size-52 rounded-full bg-sg-blue/30 blur-2xl" />
+        <div className="absolute -bottom-20 left-1/4 size-44 rounded-full bg-sg-purple/25 blur-2xl" />
+        <div className="relative">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-sg-xp">
+            <Sparkles className="size-3" /> Quest 4 · Transit run
+          </span>
+          <h3 className="mt-4 max-w-md text-2xl font-black leading-tight sm:text-3xl">Make it to Changi before 9:00.</h3>
+          <p className="mt-2 max-w-lg text-sm font-semibold leading-relaxed text-white/65">
+            It is your first morning at TCS. Read real-world-style signs, choose the correct services and platforms, and recover if you make a wrong turn.
+          </p>
+        </div>
+      </div>
+
+      <TransitMap currentStage={0} />
+
+      <div className="grid grid-cols-3 gap-2 border-t border-black/5 bg-slate-50 p-3 sm:gap-3 sm:p-6">
+        {[
+          ['138 min', 'Time budget'],
+          ['4 legs', 'Bus · NEL · DTL · walk'],
+          ['Checkpoint', 'Saved at Punggol'],
+        ].map(([value, label]) => (
+          <div key={label} className="rounded-2xl border border-slate-200 bg-white p-2.5 shadow-sm sm:p-3">
+            <p className="text-xs font-black text-sg-navy sm:text-sm">{value}</p>
+            <p className="mt-0.5 text-[8px] font-bold uppercase tracking-wide text-sg-navy/35 sm:text-[10px]">{label}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-col gap-3 border-t border-black/5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <p className="text-xs font-semibold text-sg-navy/45">Hints nudge you. STUCK gives the exact next step and pauses the clock.</p>
+        <button type="button" onClick={onStart} className="group flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-sg-blue px-6 py-3.5 text-sm font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:bg-sg-blue-hover">
+          Start journey <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function EndCard({
   title,
   body,
   note,
+  background,
   primary,
   secondary,
 }: {
   title: string;
   body: string;
   note?: string;
+  background?: string;
   primary: { label: string; onClick: () => void };
   secondary?: { label: string; onClick: () => void };
 }) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
-      <p className="text-lg font-black text-sg-navy">{title}</p>
-      <p className="mt-1 max-w-xs text-sm font-semibold text-sg-navy/55">{body}</p>
-      {note && <p className="mt-2 text-sm font-black text-sg-xp">{note}</p>}
-      <div className="mt-5 flex flex-wrap justify-center gap-2">
+    <div className={`relative flex flex-1 flex-col items-center justify-center overflow-hidden px-6 text-center ${background ? 'text-white' : ''}`}>
+      {background && <img src={background} alt="TCS office at Changi Business Park" className="absolute inset-0 size-full object-cover" />}
+      {background && <div className="absolute inset-0 bg-sg-navy/72 backdrop-blur-[1px]" />}
+      <p className={`relative text-lg font-black ${background ? 'text-white' : 'text-sg-navy'}`}>{title}</p>
+      <p className={`relative mt-1 max-w-xs text-sm font-semibold ${background ? 'text-white/75' : 'text-sg-navy/55'}`}>{body}</p>
+      {note && <p className="relative mt-2 text-sm font-black text-sg-xp">{note}</p>}
+      <div className="relative mt-5 flex flex-wrap justify-center gap-2">
         <button
           type="button"
           onClick={primary.onClick}

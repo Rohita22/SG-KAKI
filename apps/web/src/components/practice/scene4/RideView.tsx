@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlertTriangle, DoorOpen } from 'lucide-react';
+import { AlertTriangle, BellRing, DoorOpen, Radio, TrainFront } from 'lucide-react';
 import type { Ride } from './route';
 import { stationIndex } from './route';
 
@@ -28,9 +28,46 @@ export function RideView({
 
   return (
     <div className="flex h-full flex-col">
-      <div className={`relative flex-1 overflow-hidden bg-gradient-to-br ${ride.placeholder}`}>
+      <div className="relative min-h-0 flex-1 overflow-hidden bg-slate-700">
         {ride.background && (
           <img src={ride.background} alt="" className="absolute inset-0 size-full object-cover" />
+        )}
+
+        {!ride.background && (
+          <div className="absolute inset-0 overflow-hidden bg-gradient-to-b from-slate-200 via-slate-100 to-slate-300">
+            <div className="absolute inset-x-0 top-0 h-10 bg-slate-700" />
+            <div className="absolute left-5 right-5 top-14 h-[48%] overflow-hidden rounded-2xl border-[7px] border-slate-500 bg-sky-200 shadow-inner">
+              <motion.div
+                className="absolute inset-y-0 flex w-[220%] items-end gap-12"
+                animate={{ x: ['0%', '-50%'] }}
+                transition={{ duration: ride.id === 'ride-bus' ? 5 : 3.2, repeat: Infinity, ease: 'linear' }}
+              >
+                {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="relative h-[75%] w-28 shrink-0 rounded-t-lg bg-slate-400/70">
+                    <div className="mx-3 mt-3 grid grid-cols-2 gap-2">
+                      {[0, 1, 2, 3].map((w) => <span key={w} className="h-5 rounded-sm bg-sky-100/70" />)}
+                    </div>
+                  </div>
+                ))}
+              </motion.div>
+              <div className="absolute inset-x-0 bottom-0 h-4 bg-emerald-700/45" />
+            </div>
+            <div className="absolute inset-x-0 bottom-0 h-[30%] bg-slate-600">
+              <div className="mx-auto mt-5 h-5 w-[82%] rounded-full bg-slate-800/40" />
+            </div>
+            <div className="absolute left-0 top-0 h-full w-5 bg-slate-500" />
+            <div className="absolute right-0 top-0 h-full w-5 bg-slate-500" />
+            <motion.div
+              className="absolute bottom-5 left-[16%] h-24 w-16 rounded-t-full bg-sg-blue shadow-lg"
+              animate={{ y: [0, 2, 0] }}
+              transition={{ duration: 1, repeat: Infinity }}
+            />
+            <motion.div
+              className="absolute bottom-5 right-[14%] h-20 w-14 rounded-t-full bg-sg-xp shadow-lg"
+              animate={{ y: [0, -2, 0] }}
+              transition={{ duration: 1.2, repeat: Infinity }}
+            />
+          </div>
         )}
 
         <div
@@ -39,14 +76,16 @@ export function RideView({
           aria-hidden
         />
 
-        <div className="absolute inset-x-0 top-0 px-4 pt-5">
-          <p className="text-[11px] font-black uppercase tracking-wide text-white/70">
+        <div className="absolute inset-x-0 top-0 flex items-center justify-between bg-slate-900/80 px-4 py-3 backdrop-blur-sm">
+          <p className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wide text-white/80">
+            {ride.id === 'ride-bus' ? <BellRing className="size-3.5" /> : <TrainFront className="size-3.5" />}
             {ride.line}
           </p>
+          <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-emerald-300"><Radio className="size-3" /> In transit</span>
         </div>
 
-        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 px-4 text-center">
-          <p className="text-[11px] font-black uppercase tracking-wide text-white/60">
+        <div className="absolute left-1/2 top-[47%] w-[min(88%,25rem)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/20 bg-slate-950/85 px-4 py-3 text-center shadow-2xl backdrop-blur-sm">
+          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-white/50">
             {atEnd ? 'Last stop' : 'Now at'}
           </p>
           <AnimatePresence mode="popLayout">
@@ -56,19 +95,19 @@ export function RideView({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -14 }}
               transition={{ type: 'spring', stiffness: 320, damping: 26 }}
-              className="text-2xl font-black leading-tight text-white drop-shadow sm:text-3xl"
+              className="text-xl font-black leading-tight text-white drop-shadow sm:text-2xl"
             >
               {station}
             </motion.p>
           </AnimatePresence>
           {next && (
-            <p className="mt-1.5 text-xs font-bold text-white/70">Next: {next}</p>
+            <p className="mt-1 text-[11px] font-bold text-cyan-200">Next: {next}</p>
           )}
         </div>
 
         {/* The rail below is a position indicator, not a countdown: it shows how
             far along the line you are without naming the stop you want. */}
-        <div className="absolute inset-x-0 bottom-0 flex items-end gap-1 px-4 pb-4">
+        <div className="absolute inset-x-0 bottom-0 flex items-end gap-1 bg-slate-950/55 px-4 py-3 backdrop-blur-sm">
           {ride.stations.map((s, i) => (
             <span
               key={s + i}
@@ -80,11 +119,11 @@ export function RideView({
         </div>
       </div>
 
-      <div className="border-t border-black/5 bg-white p-4">
+      <div className="border-t border-black/5 bg-white p-3 sm:p-4">
         <button
           type="button"
           onClick={onAlight}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-sg-navy px-4 py-3.5 text-sm font-black text-white transition-opacity hover:opacity-90"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-sg-navy px-4 py-3.5 text-sm font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:bg-sg-blue"
         >
           <DoorOpen className="size-4" />
           Get off here
