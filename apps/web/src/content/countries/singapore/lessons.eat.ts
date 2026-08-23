@@ -67,7 +67,7 @@ export const eatLessons: Lesson[] = [
       {
         emoji: '📜',
         title: 'Fun fact',
-        body: '"Chope" comes from the Hokkien word for "seal" or "stamp" — you\'re literally stamping your claim on the table.',
+        body: '"Chope" comes from "chop," meaning a seal or stamp — you\'re marking your claim on the table.',
       },
       {
         emoji: '👂',

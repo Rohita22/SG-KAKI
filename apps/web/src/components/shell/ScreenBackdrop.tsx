@@ -9,7 +9,19 @@
  * matches the content column regardless of the sidebar's collapsed/expanded
  * width.
  */
-export function ScreenBackdrop({ image }: { image: string }) {
+export function ScreenBackdrop({
+  image,
+  tone = 'default',
+}: {
+  image: string;
+  /** Use on content-rich illustrated journey screens so the scene remains visible. */
+  tone?: 'default' | 'subtle';
+}) {
+  const overlayClass =
+    tone === 'subtle'
+      ? 'from-[#FDFBF5]/70 via-[#FDFBF5]/38 to-[#FDFBF5]/26'
+      : 'from-[#FDFBF5]/85 via-[#FDFBF5]/55 to-[#FDFBF5]/35';
+
   return (
     <div className="pointer-events-none absolute inset-0 z-0" aria-hidden="true">
       {/* overflow-hidden must live here, not on this div's parent — an
@@ -21,7 +33,7 @@ export function ScreenBackdrop({ image }: { image: string }) {
           className="size-full bg-cover bg-center bg-no-repeat"
           style={{ backgroundImage: `url(${image})` }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#FDFBF5]/85 via-[#FDFBF5]/55 to-[#FDFBF5]/35" />
+        <div className={`absolute inset-0 bg-gradient-to-b ${overlayClass}`} />
       </div>
     </div>
   );

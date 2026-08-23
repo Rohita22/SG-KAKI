@@ -19,10 +19,10 @@ export function LessonRow({ lesson, status, onSelect }: LessonRowProps) {
       disabled={locked}
       onClick={() => onSelect(lesson)}
       className={clsx(
-        'flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition-colors',
-        status === 'completed' && 'bg-sg-success/10',
-        status === 'active' && 'bg-sg-blue/10 ring-2 ring-sg-blue/40',
-        locked && 'bg-black/5 opacity-60',
+        'flex w-full items-center gap-3 rounded-2xl border border-white/70 bg-white/90 px-4 py-3.5 text-left shadow-card backdrop-blur-md transition-[background-color,box-shadow,transform] hover:-translate-y-px hover:bg-white',
+        status === 'completed' && 'border-sg-success/25',
+        status === 'active' && 'border-sg-blue/35 ring-2 ring-sg-blue/40',
+        locked && 'bg-white/65 opacity-70',
       )}
     >
       <span

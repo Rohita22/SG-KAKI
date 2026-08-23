@@ -58,7 +58,7 @@ export const moveChallenges: Challenge[] = [
     ],
     correctOptionId: 'a',
     explanation:
-      'Stand on the left, walk on the right. This keeps things moving smoothly and is one of the most consistently followed unwritten rules in Singapore.',
+      'On many busy escalators, commuters stand on the left and leave the right clear for people passing. Follow any posted safety guidance at the station.',
     xp: 10,
     difficulty: 1,
   },

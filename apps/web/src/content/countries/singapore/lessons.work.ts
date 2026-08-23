@@ -16,7 +16,7 @@ export const workLessons: Lesson[] = [
       {
         emoji: '💼',
         title: 'Why it matters',
-        body: 'Arriving late to a meeting reads as unprofessional, even if the meeting itself starts a little loosely elsewhere. Even expats new to Singapore tend to adapt fast — surveys find nearly half show up early rather than risk it.',
+        body: 'Arriving late to a meeting can read as unprofessional, even if meeting culture felt looser elsewhere. If you are running late, send a quick heads-up.',
       },
       {
         emoji: '🪜',

@@ -2,7 +2,7 @@ import { BusFront, Building2, Footprints, MapPin, TrainFront } from 'lucide-reac
 import { motion } from 'framer-motion';
 
 const STAGES = [
-  { label: 'Kadaloor', sub: 'Bus 50', icon: BusFront, colour: '#7c3aed' },
+  { label: 'Kadaloor', sub: 'Bus 50 / LRT', icon: BusFront, colour: '#7c3aed' },
   { label: 'Punggol', sub: 'North East Line', icon: TrainFront, colour: '#9e28b5' },
   { label: 'Little India', sub: 'Downtown Line', icon: TrainFront, colour: '#0354a6' },
   { label: 'Expo', sub: 'Walk', icon: Footprints, colour: '#16a34a' },

@@ -104,12 +104,12 @@ export const moveLessons: Lesson[] = [
       {
         emoji: '🛗',
         title: 'Stand left, walk right',
-        body: 'On an escalator, stand on the left. The right lane stays clear for people walking up or down.',
+        body: 'On many busy escalators, commuters stand on the left and keep the right clear for people passing. Follow any posted safety guidance at the station.',
       },
       {
         emoji: '⚡',
         title: 'Why it matters',
-        body: "It's one of the most consistently followed unwritten rules — standing on the right, especially at rush hour, will get you noticed.",
+        body: "It is a common commuting pattern, especially at rush hour. Keeping to one side helps the flow, but posted safety guidance always comes first.",
       },
       {
         emoji: '👂',

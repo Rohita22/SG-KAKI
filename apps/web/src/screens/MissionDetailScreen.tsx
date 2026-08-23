@@ -9,8 +9,8 @@ import { LessonRow, type LessonStatus } from '@/components/missions/LessonRow';
 import { MissionSummaryPanel } from '@/components/missions/MissionSummaryPanel';
 import { ScreenBackdrop } from '@/components/shell/ScreenBackdrop';
 import { ScreenCornerArt } from '@/components/shell/ScreenCornerArt';
+import { journeyBackgroundForMission } from '@/components/shell/journeyBackgrounds';
 
-const MISSION_BG_URL = '/images/field-guide-bg.png';
 const CORNER_ART_URL = '/images/field-guide-passport.png';
 
 export function MissionDetailScreen() {
@@ -57,8 +57,8 @@ export function MissionDetailScreen() {
   ).length;
 
   return (
-    <div className="relative -mx-4 -my-5 min-h-full shrink-0 px-4 py-5 sm:-mx-6 sm:px-6 lg:-mx-10 lg:-my-8 lg:px-10 lg:py-8">
-      <ScreenBackdrop image={MISSION_BG_URL} />
+    <div className="relative -mx-4 -my-5 min-h-[calc(100dvh+0.5rem)] shrink-0 px-4 py-5 sm:-mx-6 sm:px-6 lg:-mx-10 lg:-my-8 lg:px-10 lg:py-8">
+      <ScreenBackdrop image={journeyBackgroundForMission(mission.id)} tone="subtle" />
       <ScreenCornerArt image={CORNER_ART_URL} />
 
       <div className="relative z-10">

@@ -35,7 +35,7 @@ export const cultureTopics: CultureTopic[] = [
     category: 'food',
     summary: "Why a packet of tissues on an empty table means 'taken', not 'free'.",
     explanation:
-      "Choping is the widely accepted practice of reserving a seat by leaving a small personal item — a tissue packet, umbrella, or even a name card — on the table before you queue to order. It isn't rudeness or queue-jumping; it's an honesty system almost everyone follows and respects. The word itself comes from the Hokkien for \"seal\" or \"stamp\" — you're literally stamping your claim. It works because everyone silently agrees to the same rule.",
+      "Choping is the widely accepted practice of reserving a seat by leaving a small personal item — a tissue packet, umbrella, or even a name card — on the table before you queue to order. It isn't rudeness or queue-jumping; it's an honesty system almost everyone follows and respects. The word comes from \"chop,\" meaning a seal or stamp — you're marking your claim. It works because everyone silently agrees to the same rule.",
     examples: [
       'A tissue packet on a table means it is reserved — find another seat.',
       'You can chope a seat and then queue at a stall without anyone taking it.',

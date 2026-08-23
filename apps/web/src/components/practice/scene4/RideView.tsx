@@ -150,17 +150,21 @@ export function StrandedView({
   onCrossOver: () => void;
 }) {
   const index = stationIndex(ride, rideMin);
+  const station = ride.stations[index];
+  const stationBackground = ride.stationBackgrounds?.[station];
   const wrongDirection = Boolean(ride.crossOverTo);
 
   return (
     <div className="flex h-full flex-col">
       <div className="relative flex-1 overflow-hidden bg-gradient-to-br from-slate-300 to-slate-500">
+        {stationBackground && <img src={stationBackground} alt="" className="absolute inset-0 size-full object-cover" />}
+        {stationBackground && <div className="absolute inset-0 bg-slate-950/35" />}
         <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
           <AlertTriangle className="mb-2 size-7 text-white/80" />
           <p className="text-[11px] font-black uppercase tracking-wide text-white/60">
             You got off at
           </p>
-          <p className="text-2xl font-black text-white drop-shadow">{ride.stations[index]}</p>
+          <p className="text-2xl font-black text-white drop-shadow">{station}</p>
           <p className="mt-2 max-w-xs text-sm font-bold text-white/80">
             {wrongDirection
               ? 'This whole line is running away from Changi. You need the opposite platform.'

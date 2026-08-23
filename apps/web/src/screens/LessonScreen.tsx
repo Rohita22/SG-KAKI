@@ -19,8 +19,7 @@ import { AskSGBuddy } from '@/components/learning/AskSGBuddy';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { Button } from '@/components/ui/Button';
 import { ScreenBackdrop } from '@/components/shell/ScreenBackdrop';
-
-const LESSON_BG_URL = '/images/lesson-bg.png';
+import { journeyBackgroundForMission } from '@/components/shell/journeyBackgrounds';
 
 type PreStep = 'discover' | 'phrase' | 'conversation' | 'guided-practice';
 const PRE_STEP_ORDER: PreStep[] = ['discover', 'phrase', 'conversation', 'guided-practice'];
@@ -58,8 +57,8 @@ export function LessonScreen() {
   // Keyed by lesson id so the whole pre-assessment/recap step machine resets
   // cleanly when navigation moves on to the next lesson (same route component).
   return (
-    <div className="relative -mx-4 -my-5 min-h-full shrink-0 px-4 py-5 sm:-mx-6 sm:px-6 lg:-mx-10 lg:-my-8 lg:px-10 lg:py-8">
-      <ScreenBackdrop image={LESSON_BG_URL} />
+    <div className="relative -mx-4 -my-5 min-h-[calc(100dvh+0.5rem)] shrink-0 px-4 py-5 sm:-mx-6 sm:px-6 lg:-mx-10 lg:-my-8 lg:px-10 lg:py-8">
+      <ScreenBackdrop image={journeyBackgroundForMission(mission.id)} tone="subtle" />
       <div className="relative z-10">
         <LessonFlow key={lesson.id} lesson={lesson} mission={mission} />
       </div>

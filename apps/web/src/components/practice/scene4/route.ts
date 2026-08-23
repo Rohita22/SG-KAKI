@@ -4,14 +4,14 @@
  * The graph, and only the graph. The scene component owns every pixel; this
  * file owns where you can go, how long it takes, and what counts as wrong.
  *
- *   Act 1  Kadaloor  ──bus 50──▶  Punggol Int        (checkpoint, cannot fail)
+ *   Act 1  Kadaloor  ──bus 50 / Punggol LRT──▶  Punggol Int (checkpoint)
  *   Act 2  Punggol   ──NEL─────▶  Little India
  *                    ──DTL─────▶  Expo               (can fail)
  *   Act 3  Expo      ──walk────▶  TCS @ Changi Business Park
  *
  * Two node kinds carry the whole quest. A `Place` is somewhere you stand and
  * choose; a `Ride` is a line you are on, and one implementation serves the bus,
- * the NEL and the DTL alike. Every wrong alight — around thirty of them across
+ * LRT, NEL and DTL alike. Every wrong alight — around thirty of them across
  * the three lines — lands in a single generated "stranded" state rather than an
  * authored node, which is why this file is short and the art list is eleven
  * stills instead of forty.
@@ -92,6 +92,9 @@ export interface Ride {
   arriveAt: NodeId;
   placeholder: string;
   background?: string;
+  /** Optional exterior/platform art keyed by exact station name.  This makes a
+   * premature alight feel like a real place rather than a generic penalty. */
+  stationBackgrounds?: Record<string, string>;
   situation: string;
   hint: string;
   guidance: string;
@@ -134,7 +137,7 @@ export const START_NODE: NodeId = 'kadaloor-busstop';
 // ─── The graph ───────────────────────────────────────────────────────────────
 
 const NODES: RouteNode[] = [
-  // ── Act 1 — the bus ────────────────────────────────────────────────────────
+  // ── Act 1 — Kadaloor to Punggol (bus or LRT) ───────────────────────────────
   {
     kind: 'place',
     id: 'kadaloor-busstop',
@@ -144,30 +147,17 @@ const NODES: RouteNode[] = [
     background: '/scenes/scene4/environments/kadaloor-bus-stop.png',
     situation:
       'They are at the bus stop outside Kadaloor LRT station in Punggol, on their first morning, ' +
-      'trying to reach the TCS office at Changi Business Park. The bus they want is service 50 towards Punggol Interchange.',
-    hint: 'Check the service number and the destination shown on the bus display.',
-    guidance: 'Wait for bus 50 showing “Punggol Interchange”. When it stops and the doors open, board before it leaves.',
+      'trying to reach the TCS office at Changi Business Park. They can take bus 50 towards Punggol Interchange or the Punggol LRT East Loop via Oasis and Damai.',
+    hint: 'Bus 50 goes to Punggol Interchange. The LRT East Loop also reaches Punggol via Oasis and Damai; service 3 does not call here.',
+    guidance: 'Choose either bus 50 or Kadaloor LRT. For the bus, raise your hand as it approaches; for the LRT, tap your card at the fare gate first.',
     stuckQuestions: [
-      'Which bus do I take from here?',
-      'Should I take the LRT instead of the bus?',
-      'How do I pay for the bus?',
+      'Should I take bus 50 or the LRT?',
+      'Which way does the Kadaloor LRT go to Punggol?',
+      'How do I pay for either route?',
     ],
     hotspots: [
       { label: 'Wait for bus 50 towards Punggol Int', to: 'ride-bus', costMin: 5 },
-      {
-        label: 'Board bus 3',
-        to: 'kadaloor-busstop',
-        costMin: 8,
-        wrong: true,
-        nudge: 'Wrong bus — 3 goes deeper into Punggol, away from the interchange. You get off and walk back.',
-      },
-      {
-        label: 'Take the LRT instead',
-        to: 'kadaloor-busstop',
-        costMin: 6,
-        wrong: true,
-        nudge: 'The LRT loop goes the long way round to Punggol. You come back down to the bus stop.',
-      },
+      { label: 'Enter Kadaloor LRT · via Oasis & Damai', to: 'ride-lrt', costMin: 3 },
     ],
   },
   {
@@ -202,6 +192,37 @@ const NODES: RouteNode[] = [
       'What happens if I miss my stop?',
     ],
   },
+  {
+    kind: 'ride',
+    id: 'ride-lrt',
+    line: 'Punggol LRT · East Loop',
+    direction: 'Punggol via Oasis & Damai',
+    colour: '#d99a00',
+    // Kadaloor (PE5) → Oasis (PE6) → Damai (PE7) → Punggol (PTC).
+    stations: ['Kadaloor', 'Oasis', 'Damai', 'Punggol'],
+    alightAt: 3,
+    minPerStation: 2.5,
+    arriveAt: 'punggol-int',
+    terminus: true,
+    waitMin: 4,
+    placeholder: 'from-amber-300 to-yellow-400',
+    background: '/scenes/scene4/environments/mrt-interior.png',
+    stationBackgrounds: {
+      Kadaloor: '/scenes/scene4/environments/kadaloor-bus-stop.png',
+      Oasis: '/scenes/scene4/environments/oasis-lrt-platform.png',
+      Damai: '/scenes/scene4/environments/damai-lrt-platform.png',
+      Punggol: '/scenes/scene4/environments/punggol-interchange.png',
+    },
+    situation:
+      'They are on the Punggol LRT East Loop from Kadaloor. The train reaches Punggol via Oasis and Damai, where they can transfer to the North East Line.',
+    hint: 'The display should show Oasis, then Damai, then Punggol.',
+    guidance: 'Stay on the East Loop train through Oasis and Damai. Punggol is the last stop, beside the MRT interchange.',
+    stuckQuestions: [
+      'Does this LRT go to Punggol?',
+      'Which stop comes before Punggol?',
+      'Where do I change to the MRT?',
+    ],
+  },
 
   // ── Act 2 — the MRT ────────────────────────────────────────────────────────
   {
@@ -213,7 +234,7 @@ const NODES: RouteNode[] = [
     background: '/scenes/scene4/environments/punggol-interchange.png',
     checkpoint: true,
     situation:
-      'They have just got off bus 50 at Punggol Interchange and need the North East Line platform ' +
+      'They have just arrived from bus 50 or the Kadaloor LRT at Punggol Interchange and need the North East Line platform ' +
       'to head towards HarbourFront. Waterway Point mall and the LRT platforms are also here and are both wrong turns.',
     hint: 'Look for the purple MRT line, not the grey LRT loop.',
     guidance: 'Follow the purple North East Line signs to the MRT platform. Do not enter Waterway Point or take the LRT.',
@@ -417,8 +438,8 @@ const NODES: RouteNode[] = [
     alightAt: 23,
     minPerStation: 2,
     arriveAt: 'expo',
-    // Expo is the end of the Downtown Line, so — like the bus — you cannot ride
-    // past it. The only way to fail this leg is to have boarded it backwards.
+    // The DTL3 extension beyond Expo is still undergoing final integration
+    // testing in August 2026. Expo remains the live passenger terminus.
     terminus: true,
     waitMin: 4,
     placeholder: 'from-blue-300 to-indigo-400',
@@ -565,7 +586,7 @@ export function stopsPastTarget(ride: Ride, index: number): number {
 }
 
 /** The journey is unrecoverable once you are this far gone. A terminus ride can
- * never reach it — the bus and the Downtown Line both end AT the stop you want,
+ * never reach it — bus 50 and the Downtown Line both end at the stop you want,
  * so the only leg you can truly ride past is the NEL, and the only line you can
  * board backwards is the DTL. */
 export function isUnrecoverable(ride: Ride, index: number): boolean {

@@ -34,10 +34,11 @@ describe('the graph is wired up', () => {
     }
   });
 
-  it('gives every non-arrival place exactly one correct way out', () => {
+  it('gives each place its intended number of correct exits', () => {
     for (const node of allNodes.filter(isPlace)) {
       const correct = node.hotspots.filter((h) => !h.wrong);
-      expect(correct.length, `${node.id} correct exits`).toBe(node.arrival ? 0 : 1);
+      const expected = node.arrival ? 0 : node.id === START_NODE ? 2 : 1;
+      expect(correct.length, `${node.id} correct exits`).toBe(expected);
     }
   });
 
@@ -105,6 +106,20 @@ describe('going too far', () => {
       expect(ride.alightAt, `${ride.id} should end at its target`).toBe(lastIndex);
       expect(isUnrecoverable(ride, lastIndex), `${ride.id}`).toBe(false);
     }
+  });
+
+  it('does not offer service 3 at Kadaloor Exit B', () => {
+    const start = nodeById(START_NODE);
+    if (!isPlace(start)) throw new Error('start node is not a place');
+    expect(start.hotspots.map((hotspot) => hotspot.label).join(' ')).not.toMatch(/bus 3/i);
+  });
+
+  it('offers the complete Kadaloor LRT route to Punggol', () => {
+    const lrt = nodeById('ride-lrt');
+    if (!isRide(lrt)) throw new Error('ride-lrt is not a ride');
+    expect(lrt.stations).toEqual(['Kadaloor', 'Oasis', 'Damai', 'Punggol']);
+    expect(lrt.arriveAt).toBe('punggol-int');
+    expect(lrt.terminus).toBe(true);
   });
 });
 

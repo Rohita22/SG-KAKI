@@ -19,6 +19,10 @@ import { StuckPanel } from './StuckPanel';
 import { TransitMap } from './TransitMap';
 import { routeStage } from './routeStage';
 import { BoardingView } from './BoardingView';
+import { SeatView } from './SeatView';
+import { KadaloorChoiceView } from './KadaloorChoiceView';
+import { LrtEntryView } from './LrtEntryView';
+import { BusFareView } from './BusFareView';
 
 /**
  * Scene 4 — the commute. Self-contained: it shares no markup with scenes 1-3.
@@ -36,7 +40,10 @@ import { BoardingView } from './BoardingView';
 
 type Position =
   | { at: 'place'; id: NodeId }
-  | { at: 'boarding'; id: NodeId; attempt: number }
+  | { at: 'lrt-entry'; id: NodeId }
+  | { at: 'boarding'; id: NodeId; attempt: number; busAlreadyStopped?: boolean }
+  | { at: 'bus-fare'; id: NodeId }
+  | { at: 'seating'; id: NodeId }
   | { at: 'ride'; id: NodeId; rideMin: number }
   /** Off at a station that wasn't yours. `rideMin` is kept so re-boarding
    * resumes the journey rather than restarting the line. */
@@ -187,10 +194,23 @@ export function CommuteScene({
 
     const target = nodeById(hotspot.to);
     if (isRide(target)) {
+      if (target.id === 'ride-lrt') {
+        setPosition({ at: 'lrt-entry', id: target.id });
+        return;
+      }
       setPosition({ at: 'boarding', id: target.id, attempt: 0 });
       return;
     }
     goToPlace(hotspot.to);
+  }
+
+  /** Kadaloor's bus flow begins only after the player hails the bus, so the
+   * next scene starts with bus 50 already stopped at the curb. */
+  function takeHailedBus(hotspot: Hotspot) {
+    setClockMin((m) => m + hotspot.costMin);
+    const target = nodeById(hotspot.to);
+    if (!isRide(target)) return;
+    setPosition({ at: 'boarding', id: target.id, attempt: 0, busAlreadyStopped: true });
   }
 
   function alight() {
@@ -260,6 +280,26 @@ export function CommuteScene({
 
   function boardTransit() {
     if (position.at !== 'boarding') return;
+    if (position.id === 'ride-bus') {
+      setPosition({ at: 'bus-fare', id: position.id });
+      return;
+    }
+    setPosition({ at: 'seating', id: position.id });
+  }
+
+  function payBusFare() {
+    if (position.at !== 'bus-fare') return;
+    setPosition({ at: 'seating', id: position.id });
+  }
+
+  function enterLrtPlatform() {
+    if (position.at !== 'lrt-entry') return;
+    setPosition({ at: 'boarding', id: position.id, attempt: 0 });
+  }
+
+  function chooseSeat(seat: string) {
+    if (position.at !== 'seating') return;
+    setToast(`You take the ${seat.toLowerCase()} seat. Keep an eye on the next-stop display.`);
     setPosition({ at: 'ride', id: position.id, rideMin: 0 });
   }
 
@@ -336,7 +376,14 @@ export function CommuteScene({
             paused={stuckOpen}
             onBoard={boardTransit}
             onWait={waitForService}
+            busAlreadyStopped={position.busAlreadyStopped}
           />
+        ) : position.at === 'lrt-entry' ? (
+          <LrtEntryView paused={stuckOpen} onEnter={enterLrtPlatform} />
+        ) : position.at === 'bus-fare' ? (
+          <BusFareView paused={stuckOpen} onPaid={payBusFare} />
+        ) : position.at === 'seating' && ride ? (
+          <SeatView ride={ride} onChoose={chooseSeat} />
         ) : position.at === 'stranded' && ride ? (
           <StrandedView
             ride={ride}
@@ -346,6 +393,8 @@ export function CommuteScene({
           />
         ) : position.at === 'ride' && ride ? (
           <RideView ride={ride} rideMin={position.rideMin} onAlight={alight} />
+        ) : place?.id === START_NODE ? (
+          <KadaloorChoiceView place={place} onChoose={takeHotspot} onHailedBus={takeHailedBus} disabled={stuckOpen} />
         ) : place ? (
           <PlaceView place={place} onGo={takeHotspot} disabled={stuckOpen} />
         ) : null}
