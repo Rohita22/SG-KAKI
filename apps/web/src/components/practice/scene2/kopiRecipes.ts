@@ -1,12 +1,12 @@
 export const INGREDIENTS = [
-  { id: 'coffee', label: 'Ready kopi', shortLabel: 'Kopi', icon: '☕', image: '/scenes/scene2/game/ingredients/ready-kopi.png' },
-  { id: 'tea', label: 'Ready teh', shortLabel: 'Teh', icon: '🫖', image: '/scenes/scene2/game/ingredients/ready-teh.png' },
-  { id: 'milo', label: 'Ready Milo', shortLabel: 'Milo', icon: '🍫', image: '/scenes/scene2/game/ingredients/ready-milo.png' },
-  { id: 'condensed', label: 'Condensed milk', shortLabel: 'Condensed', icon: '🥛', image: '/scenes/scene2/game/ingredients/condensed-milk-spoon.png' },
-  { id: 'evaporated', label: 'Evaporated milk', shortLabel: 'Evaporated', icon: '🥫', image: undefined },
-  { id: 'sugar', label: 'Sugar', shortLabel: 'Sugar', icon: '🥄', image: undefined },
+  { id: 'coffee', label: 'Ready kopi', shortLabel: 'Kopi', icon: '☕', image: '/scenes/scene2/game/ingredients-v2/kopi.webp' },
+  { id: 'tea', label: 'Ready teh', shortLabel: 'Teh', icon: '🫖', image: '/scenes/scene2/game/ingredients-v2/teh.webp' },
+  { id: 'milo', label: 'Ready Milo', shortLabel: 'Milo', icon: '🍫', image: '/scenes/scene2/game/ingredients-v2/milo.webp' },
+  { id: 'condensed', label: 'Condensed milk', shortLabel: 'Condensed', icon: '🥛', image: '/scenes/scene2/game/ingredients-v2/condensed.webp' },
+  { id: 'evaporated', label: 'Evaporated milk', shortLabel: 'Evaporated', icon: '🥫', image: '/scenes/scene2/game/ingredients-v2/evaporated.webp' },
+  { id: 'sugar', label: 'Sugar', shortLabel: 'Sugar', icon: '🥄', image: '/scenes/scene2/game/ingredients-v2/sugar.webp' },
   { id: 'ice', label: 'Ice cubes', shortLabel: 'Ice', icon: '🧊', image: undefined },
-  { id: 'milo-top', label: 'Milo powder', shortLabel: 'Milo topping', icon: '🦕', image: undefined },
+  { id: 'milo-top', label: 'Milo powder', shortLabel: 'Milo topping', icon: '🦕', image: '/scenes/scene2/game/ingredients-v2/milo-topping.webp' },
 ] as const;
 
 export type IngredientId = (typeof INGREDIENTS)[number]['id'];

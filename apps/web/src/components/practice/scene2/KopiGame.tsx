@@ -26,7 +26,6 @@ import {
   Trophy,
   Undo2,
   X,
-  Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Confetti } from '@/components/celebration/Confetti';
@@ -46,8 +45,7 @@ import {
 } from './kopiRecipes';
 
 const ART = {
-  auntie: '/scenes/scene2/auntie-poh.png',
-  background: '/scenes/scene2/background.png',
+  background: '/scenes/scene2/kopi-rush-stall-v2.webp',
 } as const;
 
 const MAX_HEARTS = 3;
@@ -94,14 +92,14 @@ function DraggableIngredient({
       disabled={disabled || atLimit}
       style={transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined}
       className={clsx(
-        'group relative flex min-h-28 touch-none flex-col items-center justify-end rounded-2xl px-1 pb-2 pt-1 text-center text-sg-navy transition-all focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sg-blue/35',
-        'cursor-grab hover:-translate-y-1 active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-45',
+        'group relative flex min-h-24 touch-none flex-col items-center justify-end rounded-2xl border border-white/50 bg-[#fff8e8]/92 px-1 pb-2 pt-1 text-center text-sg-navy shadow-[0_8px_18px_rgba(55,31,12,0.2)] backdrop-blur-sm transition-all focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sg-xp/45 sm:min-h-28',
+        'cursor-grab hover:-translate-y-1 hover:bg-white active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-45',
         isDragging && 'z-30 opacity-20',
       )}
       {...listeners}
       {...attributes}
     >
-      <span className="relative flex h-20 w-full items-center justify-center transition-transform group-hover:scale-105">
+      <span className="relative flex h-14 w-full items-center justify-center transition-transform group-hover:scale-105 sm:h-20">
         <IngredientVisual id={id} />
         {count > 0 && (
           <span className="absolute right-1 top-0 flex size-7 items-center justify-center rounded-full border-2 border-white bg-sg-success text-xs font-black text-white shadow-md">
@@ -109,10 +107,10 @@ function DraggableIngredient({
           </span>
         )}
       </span>
-      <span className="rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-black leading-tight shadow-sm">
+      <span className="max-w-full rounded-full bg-white/95 px-2 py-1 text-[9px] font-black leading-tight shadow-sm sm:text-[10px]">
         {item.label}
       </span>
-      <span className="mt-1 text-[9px] font-bold uppercase tracking-wide text-sg-navy/40">
+      <span className="mt-1 hidden text-[9px] font-bold uppercase tracking-wide text-sg-navy/40 lg:block">
         {atLimit ? 'Maximum added' : 'Drag one portion'}
       </span>
     </button>
@@ -121,36 +119,9 @@ function DraggableIngredient({
 
 function IngredientVisual({ id, large = false }: { id: IngredientId; large?: boolean }) {
   const item = ingredient(id);
-  const size = large ? 'h-24 w-28' : 'h-20 w-full';
-  if (item.image) {
-    return <img src={item.image} alt="" draggable={false} className={clsx(size, 'object-contain drop-shadow-lg')} />;
-  }
-  if (id === 'evaporated') {
-    return (
-      <span className="relative block h-16 w-12 rounded-b-lg rounded-t-md border-2 border-[#a66b34] bg-gradient-to-r from-[#f2d28a] via-[#fff4c4] to-[#d5a85d] shadow-lg">
-        <span className="absolute inset-x-[-2px] top-1 h-2 rounded-full border-2 border-[#8c6238] bg-[#d8c6a5]" />
-        <span className="absolute inset-x-1 top-6 rounded bg-[#315d43] py-1 text-center text-[8px] font-black text-[#fff4c4]">EVAP</span>
-      </span>
-    );
-  }
-  if (id === 'ice') {
-    return (
-      <span className="relative block h-16 w-20">
-        {[['left-1', 'top-5', '-rotate-12'], ['left-7', 'top-1', 'rotate-6'], ['right-0', 'top-7', 'rotate-12']].map(([x, y, rotate], index) => (
-          <span key={index} className={clsx('absolute size-10 rounded-lg border-2 border-white/90 bg-gradient-to-br from-white via-sky-100/90 to-sky-300/75 shadow-md', x, y, rotate)} />
-        ))}
-      </span>
-    );
-  }
-  const powder = id === 'milo-top';
-  return (
-    <span className="relative block h-16 w-24 rotate-[-8deg]">
-      <span className="absolute left-0 top-4 h-7 w-12 rounded-[50%] border-2 border-[#7f6d61] bg-gradient-to-br from-[#f7f2ea] to-[#a99c91] shadow-md">
-        <span className={clsx('absolute inset-1 rounded-[50%]', powder ? 'bg-[#55301f]' : 'bg-white')} />
-      </span>
-      <span className="absolute left-10 top-[1.65rem] h-2 w-14 rounded-full border border-[#7f6d61] bg-gradient-to-b from-[#eee7de] to-[#9e9188]" />
-    </span>
-  );
+  const size = large ? 'h-28 w-32' : 'h-full w-full';
+  const image = item.image ?? '/scenes/scene2/game/ingredients-v2/ice.webp';
+  return <img src={image} alt="" draggable={false} className={clsx(size, 'object-contain drop-shadow-lg')} />;
 }
 
 function DrinkDropZone({
@@ -168,16 +139,16 @@ function DrinkDropZone({
     <div
       ref={setNodeRef}
       className={clsx(
-        'relative flex min-h-64 min-w-44 flex-col items-center justify-center rounded-[2rem] px-3 pb-4 pt-9 transition-all',
+        'relative flex min-h-56 min-w-0 flex-col items-center justify-center rounded-[2rem] border-2 border-dashed px-3 pb-4 pt-9 transition-all sm:min-h-64 sm:min-w-44',
         isOver
-          ? 'scale-105 bg-sg-xp/20 shadow-[0_0_0_8px_rgba(251,191,36,0.15)]'
-          : 'bg-white/20',
+          ? 'scale-105 border-sg-xp bg-sg-xp/25 shadow-[0_0_0_8px_rgba(251,191,36,0.15)]'
+          : 'border-white/55 bg-[#fff8e8]/48 shadow-[0_12px_24px_rgba(55,31,12,0.16)] backdrop-blur-[2px]',
       )}
       aria-label="Drink cup drop zone"
       data-drop-cup
     >
       <span className="absolute top-2 rounded-full bg-sg-navy px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm">
-        {isOver ? 'Release into cup' : 'Your cup'}
+        {isOver ? 'Release to pour' : selected.length ? 'Keep building' : 'Drop here'}
       </span>
       <motion.div key={cupKey} initial={{ opacity: 0, y: -18, rotate: -5 }} animate={{ opacity: 1, y: 0, rotate: 0 }}>
         <DrinkPreview selected={selected} />
@@ -553,26 +524,25 @@ export function KopiGame({ completionXp, onSessionComplete, onDone }: KopiGamePr
       </header>
 
       {phase === 'briefing' && (
-        <div className="grid min-h-[610px] bg-[#fffaf0] lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="relative min-h-72 overflow-hidden lg:min-h-full">
-            <img src={ART.background} alt="Illustrated kopitiam drinks stall" className="absolute inset-0 size-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-r from-sg-navy/75 via-sg-navy/28 to-transparent" />
-            <img src={ART.auntie} alt="Auntie Poh" className="absolute -bottom-16 right-[-4%] h-[108%] max-w-[55%] object-cover object-top drop-shadow-2xl" />
-            <div className="absolute bottom-5 left-5 max-w-[58%] rounded-2xl rounded-bl-sm bg-white p-4 text-sm font-bold leading-relaxed text-sg-navy shadow-card sm:text-base">
-              Morning rush coming! I call the order, you make the drink. Don't mix up O and kosong, ah!
+        <div className="relative min-h-[650px] overflow-hidden bg-[#e6b46b]">
+          <img src={ART.background} alt="Auntie Poh at her illustrated kopitiam drinks stall" className="absolute inset-0 size-full object-cover object-[88%_center] sm:object-[58%_center]" />
+          <div className="absolute inset-0 bg-gradient-to-r from-sg-navy/80 via-sg-navy/36 to-transparent" />
+          <div className="relative flex min-h-[650px] items-end p-5 sm:items-center sm:p-8">
+            <div className="w-full max-w-lg rounded-[2rem] border border-white/20 bg-sg-navy/88 p-5 text-white shadow-card-lg backdrop-blur-md sm:p-7">
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-sg-xp">Your first stall shift</p>
+              <h3 className="mt-2 text-3xl font-black leading-tight sm:text-4xl">Hear the order. Build the cup.</h3>
+              <p className="mt-3 text-sm font-semibold leading-relaxed text-white/72">Auntie Poh calls six local drink orders. Drag the right kopi, teh or Milo base into the cup, then add milk, sugar, ice or topping one portion at a time.</p>
+              <div className="mt-5 grid gap-2 text-sm font-bold text-white/80 sm:grid-cols-3">
+                <p className="rounded-2xl bg-white/10 p-3"><span className="mb-1 block text-lg">👆</span>Drag ingredients</p>
+                <p className="rounded-2xl bg-white/10 p-3"><span className="mb-1 block text-lg">🧠</span>Decode the order</p>
+                <p className="rounded-2xl bg-white/10 p-3"><span className="mb-1 block text-lg">🔥</span>Build a streak</p>
+              </div>
+              <div className="mt-5 rounded-2xl rounded-br-sm bg-[#fff8e8] p-4 text-sm font-bold leading-relaxed text-sg-navy shadow-card">
+                “Morning rush coming! I call the order, you make the drink. Don't mix up O and kosong, ah!”
+              </div>
+              <Button size="lg" className="mt-5 w-full" onClick={startShift}>Open the stall <ChevronRight className="size-5" /></Button>
+              <button type="button" onClick={() => setShowCodebook(true)} className="mt-3 w-full text-sm font-black text-white/75 hover:text-white">Study all {KOPI_RECIPES.length} drinks first</button>
             </div>
-          </div>
-          <div className="flex flex-col justify-center p-6 sm:p-8">
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-sg-orange">Your first stall shift</p>
-            <h3 className="mt-2 text-3xl font-black leading-tight text-sg-navy">Crack the kopi code by making it.</h3>
-            <p className="mt-3 text-sm font-semibold leading-relaxed text-sg-navy/55">Serve six orders using ready kopi, teh, or Milo, then drag in the right number of milk, sugar, ice, or topping portions.</p>
-            <div className="mt-5 grid gap-2 text-sm font-bold text-sg-navy/70">
-              <p className="flex items-center gap-2 rounded-2xl bg-white p-3"><Lightbulb className="size-5 text-sg-xp" /> Ask for one ingredient hint whenever you're stuck.</p>
-              <p className="flex items-center gap-2 rounded-2xl bg-white p-3"><Zap className="size-5 text-sg-purple" /> Build a streak and serve quickly for bonus points.</p>
-              <p className="flex items-center gap-2 rounded-2xl bg-white p-3"><Heart className="size-5 fill-sg-coral text-sg-coral" /> Three patience hearts absorb mistakes.</p>
-            </div>
-            <Button size="lg" className="mt-6 w-full" onClick={startShift}>Start the shift <ChevronRight className="size-5" /></Button>
-            <button type="button" onClick={() => setShowCodebook(true)} className="mt-3 text-sm font-black text-sg-blue hover:underline">Study all {KOPI_RECIPES.length} drinks first</button>
           </div>
         </div>
       )}
@@ -585,32 +555,35 @@ export function KopiGame({ completionXp, onSessionComplete, onDone }: KopiGamePr
           onDragCancel={() => setActiveDrag(null)}
           onDragEnd={handleDragEnd}
         >
-          <div className="relative h-[300px] overflow-hidden sm:h-[350px]">
-            <img src={ART.background} alt="Kopitiam drink counter" className="absolute inset-0 size-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-r from-sg-navy/42 via-transparent to-sg-navy/12" />
-            <img src={ART.auntie} alt="Auntie Poh calling the next order" className="absolute -bottom-20 right-[-2%] h-[112%] max-w-[38%] object-cover object-top drop-shadow-2xl" />
-            <div className="absolute left-4 top-4 sm:left-6 sm:top-6">
-              <OrderTicket recipe={current} orderNumber={roundIndex + 1} total={orders.length} />
-            </div>
-            <div className="absolute bottom-3 left-3 flex items-center gap-2 rounded-full bg-sg-navy/72 px-3 py-2 text-xs font-black text-white backdrop-blur-sm">
-              <Clock3 className="size-4 text-sg-xp" /> {seconds}s
-              {streak > 1 && <span className="text-sg-xp">🔥 {streak} streak</span>}
-            </div>
-          </div>
+          <div className="relative min-h-[980px] overflow-hidden bg-[#c98642] sm:min-h-[790px]">
+            <img src={ART.background} alt="Auntie Poh's kopitiam drink-making counter" className="absolute inset-0 size-full object-cover object-[88%_center] sm:object-[58%_center]" />
+            <div className="absolute inset-0 bg-gradient-to-b from-sg-navy/24 via-transparent to-[#4d260f]/42" />
+            <div className="relative flex min-h-[980px] flex-col p-3 sm:min-h-[790px] sm:p-5">
+              <div className="flex items-start justify-between gap-3">
+                <OrderTicket recipe={current} orderNumber={roundIndex + 1} total={orders.length} />
+                <div className="flex shrink-0 flex-col items-end gap-2">
+                  <span className="flex items-center gap-1 rounded-full bg-sg-navy/82 px-3 py-2 text-xs font-black text-white shadow-sm backdrop-blur-sm">
+                    <Clock3 className="size-4 text-sg-xp" /> {seconds}s
+                  </span>
+                  {streak > 1 && <span className="rounded-full bg-sg-xp px-3 py-1 text-xs font-black text-sg-navy shadow-sm">🔥 {streak} streak</span>}
+                </div>
+              </div>
 
-          <div className="border-t border-sg-navy/8 bg-[#fffdf8] p-4 sm:p-5">
+              <div className="min-h-24 flex-1 sm:min-h-16" />
+
+              <div className="rounded-[2rem] border border-white/35 bg-[#4d260f]/22 p-3 shadow-[0_18px_50px_rgba(43,22,9,0.28)] backdrop-blur-[3px] sm:p-4">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-sg-navy/35">
-                Drag into the cup · repeat a drag for another portion
+              <p className="rounded-full bg-sg-navy/76 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm">
+                Pick an ingredient · drop it into the cup
               </p>
               <div className="flex gap-2">
-                <button type="button" onClick={askForHint} className="flex min-h-10 items-center gap-1.5 rounded-xl bg-sg-xp/15 px-3 text-xs font-black text-sg-navy hover:bg-sg-xp/25">
+                <button type="button" onClick={askForHint} className="flex min-h-10 items-center gap-1.5 rounded-xl bg-[#fff8e8]/94 px-3 text-xs font-black text-sg-navy shadow-sm hover:bg-white">
                   <Lightbulb className="size-4 text-sg-orange" /> Ask for hint
                 </button>
-                <button type="button" onClick={undoIngredient} disabled={selected.length === 0 || Boolean(feedback)} className="flex min-h-10 items-center gap-1.5 rounded-xl bg-sg-navy/5 px-3 text-xs font-black text-sg-navy/60 disabled:opacity-35">
+                <button type="button" onClick={undoIngredient} disabled={selected.length === 0 || Boolean(feedback)} className="flex min-h-10 items-center gap-1.5 rounded-xl bg-white/86 px-3 text-xs font-black text-sg-navy/65 shadow-sm disabled:opacity-35">
                   <Undo2 className="size-4" /> Undo
                 </button>
-                <button type="button" onClick={discardDrink} disabled={selected.length === 0 || Boolean(feedback)} className="flex min-h-10 items-center gap-1.5 rounded-xl bg-sg-coral/10 px-3 text-xs font-black text-sg-coral disabled:opacity-35">
+                <button type="button" onClick={discardDrink} disabled={selected.length === 0 || Boolean(feedback)} className="flex min-h-10 items-center gap-1.5 rounded-xl bg-white/86 px-3 text-xs font-black text-sg-coral shadow-sm disabled:opacity-35">
                   <Trash2 className="size-4" /> Discard drink
                 </button>
               </div>
@@ -620,8 +593,8 @@ export function KopiGame({ completionXp, onSessionComplete, onDone }: KopiGamePr
               {hint && !feedback && (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mb-4 overflow-hidden">
                   <div className={clsx(
-                    'rounded-2xl border p-4',
-                    hint.kind === 'restart' ? 'border-sg-coral/35 bg-sg-coral/10' : 'border-sg-xp/35 bg-sg-xp/10',
+                    'rounded-2xl border bg-[#fff8e8]/95 p-4 shadow-card backdrop-blur-sm',
+                    hint.kind === 'restart' ? 'border-sg-coral/35' : 'border-sg-xp/35',
                   )}>
                     <div className="grid gap-2 text-xs font-bold text-sg-navy/60 sm:grid-cols-2">
                       <p><span className="font-black text-sg-navy">Order:</span> {current.name}</p>
@@ -641,23 +614,9 @@ export function KopiGame({ completionXp, onSessionComplete, onDone }: KopiGamePr
               )}
             </AnimatePresence>
 
-            <section
-              className="relative overflow-hidden rounded-[2rem] border border-[#ad7b44]/25 p-3 shadow-inner sm:p-4"
-              style={{ background: 'linear-gradient(180deg, #f7d69a 0%, #d99b55 7%, #b66d31 9%, #8a471f 100%)' }}
-            >
-              <div className="absolute inset-x-0 top-[10%] h-px bg-white/20" />
-              <div className="absolute inset-x-0 bottom-2 h-4 rounded-[50%] bg-black/15 blur-md" />
-              <div className="relative mb-1 flex items-center justify-between px-2">
-                <div>
-                  <h4 className="text-[10px] font-black uppercase tracking-[0.16em] text-white/75">Kopitiam workbench</h4>
-                  <p className="text-[10px] font-bold text-white/50">Pick up the item itself and drop one portion at a time.</p>
-                </div>
-                <span className="rounded-full bg-white/15 px-2.5 py-1 text-[9px] font-black uppercase tracking-wide text-white/80">Fresh cup</span>
-              </div>
-
+            <section className="relative">
               <div
-                className="relative grid items-center gap-1 sm:gap-3"
-                style={{ gridTemplateColumns: 'minmax(0, 1fr) 10rem minmax(0, 1fr)' }}
+                className="relative grid grid-cols-2 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_11rem_minmax(0,1fr)] sm:gap-3"
               >
                 <div className="grid grid-cols-2 gap-0.5 sm:gap-2">
                   {INGREDIENTS.slice(0, 4).map((item) => (
@@ -670,12 +629,14 @@ export function KopiGame({ completionXp, onSessionComplete, onDone }: KopiGamePr
                   ))}
                 </div>
 
-                <DrinkDropZone
-                  key={`${current.id}-${cupVersion}`}
-                  cupKey={`${current.id}-${cupVersion}`}
-                  selected={selected}
-                  onRemove={removeIngredient}
-                />
+                <div className="order-first col-span-2 sm:order-none sm:col-span-1">
+                  <DrinkDropZone
+                    key={`${current.id}-${cupVersion}`}
+                    cupKey={`${current.id}-${cupVersion}`}
+                    selected={selected}
+                    onRemove={removeIngredient}
+                  />
+                </div>
 
                 <div className="grid grid-cols-2 gap-0.5 sm:gap-2">
                   {INGREDIENTS.slice(4).map((item) => (
@@ -693,6 +654,8 @@ export function KopiGame({ completionXp, onSessionComplete, onDone }: KopiGamePr
             <Button size="lg" className="mt-4 w-full" disabled={selected.length === 0 || Boolean(feedback)} onClick={serveDrink}>
               Serve {current.name} <span aria-hidden="true">→</span>
             </Button>
+              </div>
+            </div>
           </div>
 
           <AnimatePresence>
