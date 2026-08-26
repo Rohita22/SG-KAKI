@@ -6,10 +6,10 @@
 export const journeyBackgrounds: Record<string, string> = {
   speak: '/images/journey-backgrounds/speak-like-a-local.png',
   eat: '/images/journey-backgrounds/eat-like-a-local.png',
-  move: '/images/journey-backgrounds/move-like-a-local.png',
+  move: '/images/journey-backgrounds/move-like-a-local-v2.webp',
   vibe: '/images/journey-backgrounds/vibe-like-a-local.png',
   work: '/images/journey-backgrounds/work-like-a-local.png',
-  reallife: '/images/journey-backgrounds/real-life-mode.png',
+  reallife: '/images/journey-backgrounds/real-life-mode-v2.webp',
 };
 
 export function journeyBackgroundForMission(missionId: string): string {

@@ -20,7 +20,7 @@ import { Modal } from "@/components/ui/Modal";
 import { clsx } from "@/lib/clsx";
 
 const RECENT_COUNT = 12;
-const FIELD_GUIDE_BG_URL = "/images/field-guide-bg.png";
+const FIELD_GUIDE_BG_URL = "/images/field-guide-bg-v2.webp";
 const CORNER_ART_URL = "/images/field-guide-passport.png";
 
 type Tab = "phrases" | "culture";

@@ -13,7 +13,7 @@ interface JourneyMapProps {
   justCompletedMissionId?: string;
 }
 
-const JOURNEY_MAP_BG_URL = '/images/journey-map-bg.png';
+const JOURNEY_MAP_BG_URL = '/images/journey-map-bg-v2.webp';
 
 const STATUS_LABEL: Record<MissionStatus, string> = {
   completed: 'Completed',
@@ -92,7 +92,7 @@ export function JourneyMap({ missions, statusFor, onSelect }: JourneyMapProps) {
         aria-hidden="true"
       />
 
-      <div className="relative mx-auto flex h-full w-[27%] min-w-[165px] max-w-[336px] flex-col p-4">
+      <div className="relative mx-auto flex h-full w-[88%] max-w-[336px] flex-col p-4 sm:w-[60%] lg:w-[27%] lg:min-w-[240px]">
         {/* dotted rail connecting each numbered stop, drawn behind the rows */}
         <div
           className="pointer-events-none absolute bottom-[38px] left-[34px] top-[38px] z-0 w-0 border-l-2 border-dotted border-white/80 sm:bottom-[46px] sm:left-[38px] sm:top-[46px]"

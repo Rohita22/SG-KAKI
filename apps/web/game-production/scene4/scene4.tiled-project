@@ -1,0 +1,15 @@
+{
+  "automappingRulesFile": "",
+  "commands": [],
+  "compatibilityVersion": "1.12",
+  "extensionsPath": "extensions",
+  "folders": [
+    "maps",
+    "art-direction",
+    "characters",
+    "props",
+    "audio",
+    "exports"
+  ],
+  "propertyTypes": []
+}

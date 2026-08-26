@@ -80,7 +80,7 @@ export function ChallengeShell({
             {hasChatThread && 'chatThread' in challenge && challenge.chatThread ? (
               <ChatBubbleThread thread={challenge.chatThread} />
             ) : (
-              <ChallengeScene scene={challenge.scene} />
+              <ChallengeScene scene={challenge.scene} challengeId={challenge.id} />
             )}
           </div>
         )}

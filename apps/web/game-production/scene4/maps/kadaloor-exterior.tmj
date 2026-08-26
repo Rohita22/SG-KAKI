@@ -1,0 +1,329 @@
+{
+  "backgroundcolor": "#dceaf0",
+  "class": "TransitLocation",
+  "compressionlevel": -1,
+  "height": 12,
+  "infinite": false,
+  "layers": [
+    {
+      "id": 8,
+      "image": "../props/kadaloor-exterior-base-v2.png",
+      "name": "BackgroundArt",
+      "offsetx": 0,
+      "offsety": 0,
+      "opacity": 1,
+      "parallaxx": 1,
+      "parallaxy": 1,
+      "repeatx": false,
+      "repeaty": false,
+      "type": "imagelayer",
+      "visible": true,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "color": "#64748b",
+      "draworder": "topdown",
+      "id": 1,
+      "name": "Reference",
+      "objects": [
+        {
+          "height": 120,
+          "id": 1,
+          "name": "Player scale · 120 px",
+          "properties": [
+            { "name": "editorOnly", "type": "bool", "value": true }
+          ],
+          "rotation": 0,
+          "type": "ScaleGuide",
+          "visible": true,
+          "width": 54,
+          "x": 1720,
+          "y": 390
+        },
+        {
+          "height": 240,
+          "id": 2,
+          "name": "Service 50 bus scale · 760 × 240 px",
+          "properties": [
+            { "name": "editorOnly", "type": "bool", "value": true }
+          ],
+          "rotation": 0,
+          "type": "ScaleGuide",
+          "visible": true,
+          "width": 760,
+          "x": 1080,
+          "y": 510
+        },
+        {
+          "height": 720,
+          "id": 3,
+          "name": "Reference camera · 1280 × 720",
+          "properties": [
+            { "name": "editorOnly", "type": "bool", "value": true }
+          ],
+          "rotation": 0,
+          "type": "CameraGuide",
+          "visible": true,
+          "width": 1280,
+          "x": 448,
+          "y": 24
+        }
+      ],
+      "opacity": 0.55,
+      "type": "objectgroup",
+      "visible": false,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "color": "#0f766e",
+      "draworder": "topdown",
+      "id": 2,
+      "name": "Environment",
+      "objects": [
+        { "height": 110, "id": 4, "name": "Pedestrian pavement", "rotation": 0, "type": "Surface", "visible": true, "width": 2176, "x": 0, "y": 420 },
+        { "height": 16, "id": 5, "name": "Raised curb", "rotation": 0, "type": "Curb", "visible": true, "width": 2176, "x": 0, "y": 530 },
+        { "height": 222, "id": 6, "name": "Dedicated curbside bus lane", "rotation": 0, "type": "RoadSurface", "visible": true, "width": 2176, "x": 0, "y": 546 },
+        {
+          "height": 475,
+          "id": 7,
+          "name": "Elevated PE5 Kadaloor station and linkbridge",
+          "properties": [
+            { "name": "referenceVerified", "type": "bool", "value": true },
+            { "name": "structureLevel", "type": "string", "value": "L2 concourse and L3 platform" }
+          ],
+          "rotation": 0,
+          "type": "Structure",
+          "visible": true,
+          "width": 1030,
+          "x": 180,
+          "y": 55
+        },
+        {
+          "height": 340,
+          "id": 8,
+          "name": "Exit B covered stair flight",
+          "properties": [
+            { "name": "entrance", "type": "string", "value": "B" },
+            { "name": "stationCode", "type": "string", "value": "PE5" },
+            { "name": "stationName", "type": "string", "value": "Kadaloor" }
+          ],
+          "rotation": 0,
+          "type": "Structure",
+          "visible": true,
+          "width": 850,
+          "x": 200,
+          "y": 190
+        },
+        { "height": 70, "id": 9, "name": "Exit B lower stair landing", "rotation": 0, "type": "Surface", "visible": true, "width": 250, "x": 220, "y": 460 },
+        { "height": 370, "id": 10, "name": "Exit B lift and station support", "rotation": 0, "type": "Structure", "visible": true, "width": 180, "x": 1030, "y": 160 },
+        { "height": 322, "id": 11, "name": "Separate shelter sprite", "rotation": 0, "type": "LayeredProp", "visible": true, "width": 520, "x": 1145, "y": 210 },
+        {
+          "height": 212,
+          "id": 12,
+          "name": "Bus shelter footprint",
+          "properties": [
+            { "name": "stopCode", "type": "string", "value": "65321" },
+            { "name": "services", "type": "string", "value": "50,666,683" },
+            { "name": "stopName", "type": "string", "value": "Kadaloor Stn Exit B" }
+          ],
+          "rotation": 0,
+          "type": "BusStop",
+          "visible": true,
+          "width": 520,
+          "x": 1145,
+          "y": 335
+        },
+        { "height": 428, "id": 13, "name": "Separate bus stop pole 65321", "rotation": 0, "type": "LayeredProp", "visible": true, "width": 130, "x": 1608, "y": 108 },
+        { "height": 88, "id": 14, "name": "Separate shelter bench", "rotation": 0, "type": "LayeredProp", "visible": true, "width": 280, "x": 1300, "y": 445 },
+        { "height": 105, "id": 30, "name": "Separate curb bollard B", "rotation": 0, "type": "LayeredProp", "visible": true, "width": 34, "x": 1855, "y": 431 },
+        { "height": 105, "id": 31, "name": "Separate curb bollard C", "rotation": 0, "type": "LayeredProp", "visible": true, "width": 34, "x": 1965, "y": 431 }
+      ],
+      "opacity": 0.35,
+      "type": "objectgroup",
+      "visible": false,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "color": "#dc2626",
+      "draworder": "topdown",
+      "id": 3,
+      "name": "Collision",
+      "objects": [
+        { "height": 420, "id": 15, "name": "Upper scenery boundary", "rotation": 0, "type": "Solid", "visible": true, "width": 2176, "x": 0, "y": 0 },
+        { "height": 214, "id": 18, "name": "Road boundary left of boarding gap", "rotation": 0, "type": "Solid", "visible": true, "width": 1120, "x": 0, "y": 554 },
+        { "height": 214, "id": 19, "name": "Road boundary right of boarding gap", "rotation": 0, "type": "Solid", "visible": true, "width": 906, "x": 1270, "y": 554 },
+        { "height": 214, "id": 20, "name": "Boarding gap plug", "rotation": 0, "type": "Solid", "visible": true, "width": 150, "x": 1120, "y": 554 },
+        { "height": 10, "id": 40, "name": "Shelter bench foot collision", "rotation": 0, "type": "Solid", "visible": true, "width": 280, "x": 1300, "y": 518 },
+        { "height": 10, "id": 41, "name": "Shelter left-post collision", "rotation": 0, "type": "Solid", "visible": true, "width": 34, "x": 1145, "y": 512 },
+        { "height": 10, "id": 44, "name": "Bollard B collision", "rotation": 0, "type": "Solid", "visible": true, "width": 34, "x": 1855, "y": 524 },
+        { "height": 10, "id": 45, "name": "Bollard C collision", "rotation": 0, "type": "Solid", "visible": true, "width": 34, "x": 1965, "y": 524 }
+      ],
+      "opacity": 0.42,
+      "type": "objectgroup",
+      "visible": false,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "color": "#f59e0b",
+      "draworder": "topdown",
+      "id": 4,
+      "name": "Interactions",
+      "objects": [
+        {
+          "height": 145,
+          "id": 20,
+          "name": "Wait inside bus stop",
+          "properties": [
+            { "name": "action", "type": "string", "value": "wait_bus" },
+            { "name": "service", "type": "string", "value": "50" },
+            { "name": "showRaiseHand", "type": "bool", "value": true }
+          ],
+          "rotation": 0,
+          "type": "Trigger",
+          "visible": true,
+          "width": 900,
+          "x": 1050,
+          "y": 430
+        },
+        {
+          "height": 74,
+          "id": 21,
+          "name": "Exit B stair entry",
+          "properties": [
+            { "name": "action", "type": "string", "value": "climb_stairs_then_enter_map" },
+            { "name": "animationStepCycles", "type": "int", "value": 3 },
+            { "name": "targetMap", "type": "string", "value": "kadaloor-concourse" },
+            { "name": "targetSpawn", "type": "string", "value": "from-exit-b-stairs" }
+          ],
+          "rotation": 0,
+          "type": "Portal",
+          "visible": true,
+          "width": 430,
+          "x": 120,
+          "y": 480
+        },
+        {
+          "height": 188,
+          "id": 22,
+          "name": "Service 50 front-door boarding zone",
+          "properties": [
+            { "name": "action", "type": "string", "value": "board_bus" },
+            { "name": "enabledBy", "type": "string", "value": "bus_50_doors_open" }
+          ],
+          "rotation": 0,
+          "type": "Trigger",
+          "visible": true,
+          "width": 150,
+          "x": 1120,
+          "y": 580
+        }
+      ],
+      "opacity": 0.5,
+      "type": "objectgroup",
+      "visible": false,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "color": "#2563eb",
+      "draworder": "topdown",
+      "id": 5,
+      "name": "Spawns",
+      "objects": [
+        { "id": 23, "name": "player-start", "point": true, "rotation": 0, "type": "PlayerSpawn", "visible": true, "x": 1870, "y": 510 },
+        { "id": 24, "name": "bus-50-entry", "point": true, "rotation": 0, "type": "VehicleSpawn", "visible": true, "x": 2900, "y": 650 },
+        { "id": 25, "name": "bus-50-stop", "point": true, "rotation": 0, "type": "VehicleStop", "visible": true, "x": 1460, "y": 650 }
+      ],
+      "opacity": 1,
+      "type": "objectgroup",
+      "visible": false,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "color": "#7c3aed",
+      "draworder": "topdown",
+      "id": 6,
+      "name": "Paths",
+      "objects": [
+        {
+          "id": 26,
+          "name": "service-50-arrival",
+          "polyline": [
+            { "x": 0, "y": 0 },
+            { "x": -600, "y": 0 },
+            { "x": -1100, "y": 0 },
+            { "x": -1440, "y": 0 }
+          ],
+          "properties": [
+            { "name": "vehicle", "type": "string", "value": "bus-50" },
+            { "name": "speed", "type": "float", "value": 420 },
+            { "name": "stopAt", "type": "string", "value": "bus-50-stop" }
+          ],
+          "rotation": 0,
+          "type": "VehiclePath",
+          "visible": true,
+          "x": 2900,
+          "y": 650
+        }
+      ],
+      "opacity": 1,
+      "type": "objectgroup",
+      "visible": false,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "color": "#0891b2",
+      "draworder": "topdown",
+      "id": 7,
+      "name": "Camera",
+      "objects": [
+        {
+          "height": 768,
+          "id": 27,
+          "name": "kadaloor-exterior-bounds",
+          "properties": [
+            { "name": "followLerp", "type": "float", "value": 0.12 },
+            { "name": "viewportHeight", "type": "int", "value": 720 },
+            { "name": "viewportWidth", "type": "int", "value": 1280 }
+          ],
+          "rotation": 0,
+          "type": "CameraBounds",
+          "visible": true,
+          "width": 2176,
+          "x": 0,
+          "y": 0
+        }
+      ],
+      "opacity": 0.25,
+      "type": "objectgroup",
+      "visible": false,
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "nextlayerid": 9,
+  "nextobjectid": 46,
+  "orientation": "orthogonal",
+  "properties": [
+    { "name": "backgroundAsset", "type": "file", "value": "../props/kadaloor-exterior-base-v2.png" },
+    { "name": "displayName", "type": "string", "value": "Kadaloor — Bus Stop 65321 and PE5 Exit B" },
+    { "name": "locationId", "type": "string", "value": "kadaloor-exterior" },
+    { "name": "playerArtHeight", "type": "int", "value": 120 },
+    { "name": "runtimeViewportHeight", "type": "int", "value": 720 },
+    { "name": "runtimeViewportWidth", "type": "int", "value": 1280 }
+  ],
+  "renderorder": "right-down",
+  "tiledversion": "1.12.2",
+  "tileheight": 64,
+  "tilesets": [],
+  "tilewidth": 64,
+  "type": "map",
+  "version": "1.10",
+  "width": 34
+}

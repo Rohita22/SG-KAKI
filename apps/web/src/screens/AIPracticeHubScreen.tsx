@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/Card';
 import { ScreenBackdrop } from '@/components/shell/ScreenBackdrop';
 import { clsx } from '@/lib/clsx';
 
-const HUB_BG_URL = '/images/field-guide-bg.png';
+const HUB_BG_URL = '/images/field-guide-bg-v2.webp';
 
 export function AIPracticeHubScreen() {
   const { state } = useProgress();

@@ -19,6 +19,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "framer-motion": "^12.43.0",
     "lucide-react": "^1.28.0",
+    "phaser": "4.2.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.2"

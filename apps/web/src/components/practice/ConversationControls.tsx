@@ -43,7 +43,7 @@ export function ConversationControls({
   return (
     <>
       {!isTyping && suggestionsLoading && (
-        <div className="flex gap-2 overflow-x-auto border-t border-black/5 px-5 py-3">
+        <div className="flex flex-wrap gap-2 border-t border-black/5 px-5 py-3">
           {[0, 1, 2].map((i) => (
             <span key={i} className="h-8 w-28 shrink-0 animate-pulse rounded-full bg-sg-bg" />
           ))}
@@ -51,7 +51,7 @@ export function ConversationControls({
       )}
 
       {!isTyping && !suggestionsLoading && showFallbackOpeners && (
-        <div className="flex gap-2 overflow-x-auto border-t border-black/5 px-5 py-3">
+        <div className="flex flex-wrap gap-2 border-t border-black/5 px-5 py-3">
           {fallbackOpeners.map((opener) => (
             <SuggestedReplyChip key={opener} label={opener} onClick={() => onSend(opener)} />
           ))}
@@ -59,7 +59,7 @@ export function ConversationControls({
       )}
 
       {!isTyping && !suggestionsLoading && !showFallbackOpeners && suggestions.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto border-t border-black/5 px-5 py-3">
+        <div className="flex flex-wrap gap-2 border-t border-black/5 px-5 py-3">
           {suggestions.map((reply) => (
             <SuggestedReplyChip key={reply} label={reply} onClick={() => onSend(reply)} />
           ))}

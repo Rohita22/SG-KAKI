@@ -45,7 +45,7 @@ function SpeechBubble({
       exit={{ opacity: 0, scale: 0.9, y: 6 }}
       transition={{ type: 'spring', stiffness: 340, damping: 22 }}
       className={clsx(
-        'relative w-max max-w-[38vw] rounded-2xl bg-white px-4 py-2.5 text-sm font-semibold text-sg-navy shadow-lg sm:max-w-[190px] lg:max-w-[230px]',
+        'relative w-max max-w-[min(38cqw,230px)] rounded-2xl bg-white px-4 py-2.5 text-sm font-semibold text-sg-navy shadow-lg',
         anchor === 'left' ? 'rounded-bl-sm' : 'ml-auto rounded-br-sm',
       )}
     >
@@ -301,7 +301,7 @@ export function VisualNovelScene({
 
   return (
     <div className="overflow-hidden rounded-3xl bg-white shadow-card">
-      <div className="relative h-64 w-full overflow-hidden bg-sg-navy sm:h-80 lg:h-[420px]">
+      <div className="@container relative h-64 w-full overflow-hidden bg-sg-navy sm:h-80 lg:h-[420px]">
         <motion.img
           key={visualScene.backgroundImage}
           src={visualScene.backgroundImage}

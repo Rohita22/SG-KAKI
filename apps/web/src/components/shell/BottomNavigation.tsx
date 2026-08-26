@@ -1,12 +1,11 @@
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Map, Compass, BarChart3, MessageCircle } from 'lucide-react';
+import { Map, Compass, MessageCircle } from 'lucide-react';
 import { clsx } from '@/lib/clsx';
 
 const TABS = [
   { to: '/map', label: 'Journey', icon: Map, end: false },
   { to: '/field-guide', label: 'Field Guide', icon: Compass, end: false },
-  { to: '/progress', label: 'Progress', icon: BarChart3, end: false },
   { to: '/practice', label: 'Quests', icon: MessageCircle, end: false },
 ];
 
@@ -14,7 +13,7 @@ export function BottomNavigation() {
   return (
     <nav
       aria-label="Primary"
-      className="grid grid-cols-4 border-t border-black/5 bg-white/95 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur lg:hidden"
+      className="grid grid-cols-3 border-t border-black/5 bg-white/95 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur lg:hidden"
     >
       {TABS.map(({ to, label, icon: Icon, end }) => (
         <NavLink

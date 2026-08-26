@@ -5,7 +5,6 @@ import { GameFrame } from '@/components/shell/GameFrame';
 import { AppShell } from '@/components/shell/AppShell';
 import { MapScreen } from '@/screens/MapScreen';
 import { MissionDetailScreen } from '@/screens/MissionDetailScreen';
-import { ProgressScreen } from '@/screens/ProgressScreen';
 import { LessonScreen } from '@/screens/LessonScreen';
 import { MissionCompleteRoute } from '@/screens/MissionCompleteRoute';
 import { MissionUnlockedRoute } from '@/screens/MissionUnlockedRoute';
@@ -26,13 +25,12 @@ function App() {
                 <Route path="/" element={<Navigate to="/map" replace />} />
                 <Route path="/map" element={<MapScreen />} />
                 <Route path="/missions/:missionId" element={<MissionDetailScreen />} />
-                <Route path="/progress" element={<ProgressScreen />} />
                 <Route path="/field-guide" element={<FieldGuideScreen />} />
                 <Route path="/practice" element={<AIPracticeHubScreen />} />
                 <Route path="/practice/:scenarioId" element={<AIPracticeScreen />} />
                 {/* Old routes, kept as redirects so stale links/bookmarks never land on a blank page. */}
                 <Route path="/missions" element={<Navigate to="/map" replace />} />
-                <Route path="/rewards" element={<Navigate to="/progress" replace />} />
+                <Route path="/rewards" element={<Navigate to="/map" replace />} />
                 <Route path="/phrasebook" element={<Navigate to="/field-guide" replace />} />
                 <Route
                   path="/culturebook"

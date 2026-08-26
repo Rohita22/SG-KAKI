@@ -12,13 +12,28 @@ const GRADIENTS: Record<string, string> = {
   classroom: 'from-sg-blue to-sg-purple',
 };
 
+const SCENE_IMAGES: Record<string, string> = {
+  escalator: '/images/challenge-scenes/escalator.webp',
+  train: '/images/challenge-scenes/train.webp',
+  hawker: '/images/challenge-scenes/hawker.webp',
+  queue: '/images/challenge-scenes/queue.webp',
+  office: '/images/challenge-scenes/office.webp',
+  street: '/images/challenge-scenes/street.webp',
+  chat: '/images/challenge-scenes/chat.webp',
+  classroom: '/images/challenge-scenes/classroom.webp',
+};
+
 export function SceneContainer({
   scene,
   children,
+  image: imageOverride,
 }: {
   scene: string;
-  children: ReactNode;
+  children?: ReactNode;
+  image?: string;
 }) {
+  const image = imageOverride ?? SCENE_IMAGES[scene];
+
   return (
     <div
       className={clsx(
@@ -26,7 +41,16 @@ export function SceneContainer({
         GRADIENTS[scene] ?? 'from-sg-navy to-sg-navy-light',
       )}
     >
-      {children}
+      {image ? (
+        <img
+          src={image}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 size-full object-cover object-center"
+        />
+      ) : (
+        children
+      )}
     </div>
   );
 }

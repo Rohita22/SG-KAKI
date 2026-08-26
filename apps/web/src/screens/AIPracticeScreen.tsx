@@ -11,7 +11,8 @@ import { Button } from '@/components/ui/Button';
 import { ChallengeScene } from '@/components/challenges/scenes/ChallengeScene';
 import { VisualNovelScene } from '@/components/practice/VisualNovelScene';
 import { HawkerScene } from '@/components/practice/scene3/HawkerScene';
-import { CommuteScene } from '@/components/practice/scene4/CommuteScene';
+import { CommuteGame } from '@/components/practice/scene4/CommuteGame';
+import { KopiGame } from '@/components/practice/scene2/KopiGame';
 
 // Natural-ending policy shared by every scenario, scripted or not: never
 // finish before MIN_TURNS_TO_FINISH even if the AI signals readiness early,
@@ -21,14 +22,18 @@ import { CommuteScene } from '@/components/practice/scene4/CommuteScene';
 const MIN_TURNS_TO_FINISH = 2;
 const MAX_TURNS_TO_FINISH = 6;
 
-// Scenes 3 and 4 each own a self-contained stage component, separate from the
-// shared visual-novel one scenes 1 and 2 use. Each closes its own session and
+// Scene 3 owns a self-contained stage component, separate from the shared
+// visual-novel one scenes 1 and 2 use. It closes its own session and
 // awards its own XP, so the generic "Finish Practice" button below the stage
-// would be a duplicate — which is why the ladder and that guard read the same
-// set rather than each carrying their own list of ids to forget to update.
+// would be a duplicate.
 const HAWKER_SCENARIO_ID = 'hawker-lunch';
 const COMMUTE_SCENARIO_ID = 'commute-to-changi';
-const SELF_CONTAINED_SCENE_IDS = new Set([HAWKER_SCENARIO_ID, COMMUTE_SCENARIO_ID]);
+const KOPI_SCENARIO_ID = 'ordering-kopi';
+const SELF_CONTAINED_SCENE_IDS = new Set([
+  HAWKER_SCENARIO_ID,
+  COMMUTE_SCENARIO_ID,
+  KOPI_SCENARIO_ID,
+]);
 
 const PRACTICE_SKILLS = [
   'Casual communication',
@@ -97,7 +102,7 @@ export function AIPracticeScreen() {
   function handleComplete() {
     if (!scenario) return;
     awardXp(scenario.completionXp);
-    navigate('/progress');
+    navigate('/practice');
   }
 
   function handleSessionComplete() {
@@ -114,16 +119,20 @@ export function AIPracticeScreen() {
         </span>
       </div>
       <p className="mt-1 text-sm text-sg-navy/50">
-        {scenario.id === COMMUTE_SCENARIO_ID
-          ? 'Navigate Singapore by bus, MRT, and on foot.'
+        {SELF_CONTAINED_SCENE_IDS.has(scenario.id)
+          ? 'Complete this hands-on quest and practise like a local.'
           : 'Complete this conversation quest with an AI persona.'}
       </p>
 
-      <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-[300px_1fr] lg:items-start">
-        <div
-          className={`rounded-3xl bg-white p-6 shadow-card lg:sticky lg:top-8 ${
-            scenario.id === COMMUTE_SCENARIO_ID ? 'hidden lg:block' : ''
-          }`}
+      <div
+        className={
+          scenario.id === COMMUTE_SCENARIO_ID
+            ? 'mt-6'
+            : 'mt-6 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,300px)_minmax(0,1fr)] lg:items-start'
+        }
+      >
+        {scenario.id !== COMMUTE_SCENARIO_ID && <div
+          className="min-w-0 rounded-3xl bg-white p-6 shadow-card lg:sticky lg:top-8"
         >
           <div className="flex items-start justify-between gap-2">
             <div>
@@ -159,24 +168,29 @@ export function AIPracticeScreen() {
             ))}
           </ul>
 
-          <div className="mt-5 flex gap-1.5">
-            {[0, 1, 2, 3].map((i) => (
-              <span
-                key={i}
-                className={`h-1.5 flex-1 rounded-full ${i < stepCount ? 'bg-sg-xp' : 'bg-black/10'}`}
-              />
-            ))}
-          </div>
-        </div>
+          {!SELF_CONTAINED_SCENE_IDS.has(scenario.id) && (
+            <div className="mt-5 flex gap-1.5">
+              {[0, 1, 2, 3].map((i) => (
+                <span
+                  key={i}
+                  className={`h-1.5 flex-1 rounded-full ${i < stepCount ? 'bg-sg-xp' : 'bg-black/10'}`}
+                />
+              ))}
+            </div>
+          )}
+        </div>}
 
-        <div>
+        <div className="min-w-0">
           {scenario.id === COMMUTE_SCENARIO_ID ? (
-            <CommuteScene
+            <CommuteGame
               completionXp={scenario.completionXp}
               onSessionComplete={handleSessionComplete}
-              onRestart={handleRestart}
-              // Back to the Quests hub, not the progress screen — the XP is
-              // already banked on the end card.
+              onDone={() => navigate('/practice')}
+            />
+          ) : scenario.id === KOPI_SCENARIO_ID ? (
+            <KopiGame
+              completionXp={scenario.completionXp}
+              onSessionComplete={handleSessionComplete}
               onDone={() => navigate('/practice')}
             />
           ) : scenario.id === HAWKER_SCENARIO_ID ? (
@@ -220,7 +234,7 @@ export function AIPracticeScreen() {
               onSend={handleSend}
               onSessionComplete={handleSessionComplete}
               onRestart={handleRestart}
-              onDone={() => navigate('/progress')}
+              onDone={() => navigate('/practice')}
             />
           ) : (
             <>

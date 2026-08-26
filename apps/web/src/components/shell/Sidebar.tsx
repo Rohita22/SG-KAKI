@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Map, BarChart3, MessageCircle, Compass, Home, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Map, MessageCircle, Compass, Home, ChevronLeft, ChevronRight } from 'lucide-react';
 import { clsx } from '@/lib/clsx';
 import { useProgress } from '@/state/useProgress';
 import { useDerivedProgress } from '@/state/useDerivedProgress';
@@ -10,7 +10,6 @@ import { ProgressBar } from '@/components/ui/ProgressBar';
 const NAV_ITEMS = [
   { to: '/map', label: 'Journey', icon: Map, end: false },
   { to: '/field-guide', label: 'Field Guide', icon: Compass, end: false },
-  { to: '/progress', label: 'Progress', icon: BarChart3, end: false },
   { to: '/practice', label: 'Quests', icon: MessageCircle, end: false },
 ];
 

@@ -1,0 +1,177 @@
+{
+  "backgroundcolor": "#d8d4cb",
+  "class": "TransitInterior",
+  "compressionlevel": -1,
+  "height": 12,
+  "infinite": false,
+  "layers": [
+    {
+      "id": 1,
+      "image": "../props/bus-interior-entry-v4.png",
+      "name": "BackgroundArt",
+      "offsetx": 0,
+      "offsety": 0,
+      "opacity": 1,
+      "parallaxx": 1,
+      "parallaxy": 1,
+      "repeatx": false,
+      "repeaty": false,
+      "type": "imagelayer",
+      "visible": true,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "color": "#0f766e",
+      "draworder": "topdown",
+      "id": 2,
+      "name": "Environment",
+      "objects": [
+        { "height": 118, "id": 1, "name": "Front entrance steps", "rotation": 0, "type": "Surface", "visible": true, "width": 310, "x": 0, "y": 570 },
+        { "height": 110, "id": 2, "name": "Accessible lower-deck aisle", "rotation": 0, "type": "Surface", "visible": true, "width": 1866, "x": 310, "y": 578 },
+        { "height": 290, "id": 3, "name": "Driver partition", "rotation": 0, "type": "Structure", "visible": true, "width": 430, "x": 300, "y": 280 },
+        { "height": 260, "id": 4, "name": "Single aligned seat platform", "rotation": 0, "type": "Structure", "visible": true, "width": 760, "x": 960, "y": 320 },
+        { "height": 165, "id": 9, "name": "Integrated seated bus driver", "rotation": 0, "type": "BackgroundCharacter", "visible": true, "width": 180, "x": 650, "y": 155 },
+        { "height": 410, "id": 10, "name": "Visible rear exit doors", "rotation": 0, "type": "Exit", "visible": true, "width": 360, "x": 1750, "y": 130 }
+      ],
+      "opacity": 0.35,
+      "type": "objectgroup",
+      "visible": false,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "color": "#f59e0b",
+      "draworder": "topdown",
+      "id": 3,
+      "name": "Interactions",
+      "objects": [
+        {
+          "height": 230,
+          "id": 5,
+          "name": "SimplyGo entry reader",
+          "properties": [
+            { "name": "action", "type": "string", "value": "attempt_carried_item" },
+            { "name": "mountedReaderX", "type": "int", "value": 900 },
+            { "name": "mountedReaderY", "type": "int", "value": 330 },
+            { "name": "successMessage", "type": "string", "value": "ENTRY OK" }
+          ],
+          "rotation": 0,
+          "type": "FareReader",
+          "visible": true,
+          "width": 250,
+          "x": 780,
+          "y": 480
+        },
+        {
+          "height": 180,
+          "id": 6,
+          "name": "Continue down lower-deck aisle",
+          "properties": [
+            { "name": "action", "type": "string", "value": "continue_bus_journey" }
+          ],
+          "rotation": 0,
+          "type": "Trigger",
+          "visible": true,
+          "width": 300,
+          "x": 1720,
+          "y": 500
+        },
+        {
+          "height": 220,
+          "id": 11,
+          "name": "Exit door destination",
+          "properties": [
+            { "name": "action", "type": "string", "value": "next_commute_stage" }
+          ],
+          "rotation": 0,
+          "type": "Exit",
+          "visible": true,
+          "width": 320,
+          "x": 1780,
+          "y": 480
+        }
+      ],
+      "opacity": 0.5,
+      "type": "objectgroup",
+      "visible": false,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "color": "#8b5cf6",
+      "draworder": "topdown",
+      "id": 6,
+      "name": "Pickups",
+      "objects": [
+        { "height": 105, "id": 12, "name": "Folded umbrella", "rotation": 0, "type": "FareItem", "visible": true, "width": 95, "x": 430, "y": 585 },
+        { "height": 105, "id": 13, "name": "Travel card", "rotation": 0, "type": "FareItem", "visible": true, "width": 95, "x": 550, "y": 585 },
+        { "height": 105, "id": 14, "name": "Water bottle", "rotation": 0, "type": "FareItem", "visible": true, "width": 95, "x": 670, "y": 585 }
+      ],
+      "opacity": 0.5,
+      "type": "objectgroup",
+      "visible": false,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "color": "#2563eb",
+      "draworder": "topdown",
+      "id": 4,
+      "name": "Spawns",
+      "objects": [
+        { "id": 7, "name": "from-front-door", "point": true, "rotation": 0, "type": "PlayerSpawn", "visible": true, "x": 340, "y": 670 }
+      ],
+      "opacity": 1,
+      "type": "objectgroup",
+      "visible": false,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "color": "#0891b2",
+      "draworder": "topdown",
+      "id": 5,
+      "name": "Camera",
+      "objects": [
+        {
+          "height": 768,
+          "id": 8,
+          "name": "service-50-interior-bounds",
+          "properties": [
+            { "name": "viewportHeight", "type": "int", "value": 720 },
+            { "name": "viewportWidth", "type": "int", "value": 1280 }
+          ],
+          "rotation": 0,
+          "type": "CameraBounds",
+          "visible": true,
+          "width": 2176,
+          "x": 0,
+          "y": 0
+        }
+      ],
+      "opacity": 0.25,
+      "type": "objectgroup",
+      "visible": false,
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "nextlayerid": 7,
+  "nextobjectid": 15,
+  "orientation": "orthogonal",
+  "properties": [
+    { "name": "displayName", "type": "string", "value": "SBS Transit Service 50 — Front Entrance" },
+    { "name": "locationId", "type": "string", "value": "service-50-interior" },
+    { "name": "runtimeViewportHeight", "type": "int", "value": 720 },
+    { "name": "runtimeViewportWidth", "type": "int", "value": 1280 }
+  ],
+  "renderorder": "right-down",
+  "tiledversion": "1.12.2",
+  "tileheight": 64,
+  "tilesets": [],
+  "tilewidth": 64,
+  "type": "map",
+  "version": "1.10",
+  "width": 34
+}
