@@ -162,7 +162,7 @@ class CommuteQuestScene extends Phaser.Scene {
     this.load.image(STOP_POLE_KEY, '/scenes/scene4/props/kadaloor-stop-pole-v2.png');
     this.load.image(
       INTERIOR_BACKGROUND_KEY,
-      '/scenes/scene4/props/bus-interior-entry-v4.png',
+      '/scenes/scene4/props/bus-interior-entry-v5.png',
     );
     this.load.image(
       BUS_CLOSED_KEY,

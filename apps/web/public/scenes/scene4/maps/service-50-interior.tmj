@@ -7,7 +7,7 @@
   "layers": [
     {
       "id": 1,
-      "image": "../props/bus-interior-entry-v4.png",
+      "image": "../props/bus-interior-entry-v5.png",
       "name": "BackgroundArt",
       "offsetx": 0,
       "offsety": 0,

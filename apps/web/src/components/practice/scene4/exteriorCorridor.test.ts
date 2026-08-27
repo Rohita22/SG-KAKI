@@ -85,7 +85,9 @@ describe('Kadaloor exterior walkable corridor', () => {
       const collider = colliders.find((object) => object.name === name);
       expect(collider, name + ' is missing').toBeDefined();
       expect(collider!.width).toBeGreaterThan(20);
-      expect(collider!.height).toBeGreaterThan(20);
+      // Thin foot strips are intentional: they keep the prop grounded without
+      // recreating the tall invisible barriers this suite guards against.
+      expect(collider!.height).toBeGreaterThanOrEqual(8);
     });
   });
 

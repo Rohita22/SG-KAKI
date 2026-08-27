@@ -1,12 +1,12 @@
 export const INGREDIENTS = [
-  { id: 'coffee', label: 'Ready kopi', shortLabel: 'Kopi', icon: '☕', image: '/scenes/scene2/game/ingredients-v2/kopi.webp' },
-  { id: 'tea', label: 'Ready teh', shortLabel: 'Teh', icon: '🫖', image: '/scenes/scene2/game/ingredients-v2/teh.webp' },
-  { id: 'milo', label: 'Ready Milo', shortLabel: 'Milo', icon: '🍫', image: '/scenes/scene2/game/ingredients-v2/milo.webp' },
-  { id: 'condensed', label: 'Condensed milk', shortLabel: 'Condensed', icon: '🥛', image: '/scenes/scene2/game/ingredients-v2/condensed.webp' },
-  { id: 'evaporated', label: 'Evaporated milk', shortLabel: 'Evaporated', icon: '🥫', image: '/scenes/scene2/game/ingredients-v2/evaporated.webp' },
-  { id: 'sugar', label: 'Sugar', shortLabel: 'Sugar', icon: '🥄', image: '/scenes/scene2/game/ingredients-v2/sugar.webp' },
-  { id: 'ice', label: 'Ice cubes', shortLabel: 'Ice', icon: '🧊', image: undefined },
-  { id: 'milo-top', label: 'Milo powder', shortLabel: 'Milo topping', icon: '🦕', image: '/scenes/scene2/game/ingredients-v2/milo-topping.webp' },
+  { id: 'coffee', label: 'Kopi', shortLabel: 'Kopi', icon: '☕', image: '/scenes/scene2/kopi-game/kopi-jug.png' },
+  { id: 'tea', label: 'Teh', shortLabel: 'Teh', icon: '🫖', image: '/scenes/scene2/kopi-game/teh-jug.png' },
+  { id: 'milo', label: 'Milo', shortLabel: 'Milo', icon: '🍫', image: '/scenes/scene2/kopi-game/milo-jug.png' },
+  { id: 'condensed', label: 'Condensed milk', shortLabel: 'Condensed', icon: '🥛', image: '/scenes/scene2/kopi-game/condensed-milk.png' },
+  { id: 'evaporated', label: 'Evaporated milk', shortLabel: 'Evaporated', icon: '🥫', image: '/scenes/scene2/kopi-game/evaporated-milk.png' },
+  { id: 'sugar', label: 'Sugar', shortLabel: 'Sugar', icon: '🥄', image: '/scenes/scene2/kopi-game/sugar.webp' },
+  { id: 'ice', label: 'Ice cubes', shortLabel: 'Ice', icon: '🧊', image: '/scenes/scene2/kopi-game/ice.webp' },
+  { id: 'milo-top', label: 'Milo powder', shortLabel: 'Milo topping', icon: '🦕', image: '/scenes/scene2/kopi-game/milo-powder.webp' },
 ] as const;
 
 export type IngredientId = (typeof INGREDIENTS)[number]['id'];

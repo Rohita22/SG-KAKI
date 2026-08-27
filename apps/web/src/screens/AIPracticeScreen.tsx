@@ -29,6 +29,8 @@ const MAX_TURNS_TO_FINISH = 6;
 const HAWKER_SCENARIO_ID = 'hawker-lunch';
 const COMMUTE_SCENARIO_ID = 'commute-to-changi';
 const KOPI_SCENARIO_ID = 'ordering-kopi';
+/** Scenes that draw their own header/restart chrome, so the sidebar is redundant. */
+const FULL_BLEED_SCENE_IDS = new Set([COMMUTE_SCENARIO_ID, KOPI_SCENARIO_ID]);
 const SELF_CONTAINED_SCENE_IDS = new Set([
   HAWKER_SCENARIO_ID,
   COMMUTE_SCENARIO_ID,
@@ -111,27 +113,15 @@ export function AIPracticeScreen() {
   }
 
   return (
-    <div>
-      <div className="flex items-center gap-2">
-        <h1 className="text-xl font-extrabold text-sg-navy lg:text-2xl">Quests</h1>
-        <span className="rounded-full bg-sg-xp/20 px-2 py-0.5 text-[10px] font-black text-sg-navy">
-          BETA
-        </span>
-      </div>
-      <p className="mt-1 text-sm text-sg-navy/50">
-        {SELF_CONTAINED_SCENE_IDS.has(scenario.id)
-          ? 'Complete this hands-on quest and practise like a local.'
-          : 'Complete this conversation quest with an AI persona.'}
-      </p>
-
+    <div className="flex min-h-0 flex-1 flex-col">
       <div
         className={
-          scenario.id === COMMUTE_SCENARIO_ID
-            ? 'mt-6'
-            : 'mt-6 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,300px)_minmax(0,1fr)] lg:items-start'
+          FULL_BLEED_SCENE_IDS.has(scenario.id)
+            ? 'flex min-h-0 flex-1 flex-col'
+            : 'grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,300px)_minmax(0,1fr)] lg:items-start'
         }
       >
-        {scenario.id !== COMMUTE_SCENARIO_ID && <div
+        {!FULL_BLEED_SCENE_IDS.has(scenario.id) && <div
           className="min-w-0 rounded-3xl bg-white p-6 shadow-card lg:sticky lg:top-8"
         >
           <div className="flex items-start justify-between gap-2">
@@ -180,7 +170,7 @@ export function AIPracticeScreen() {
           )}
         </div>}
 
-        <div className="min-w-0">
+        <div className={FULL_BLEED_SCENE_IDS.has(scenario.id) ? 'flex min-h-0 min-w-0 flex-1 flex-col' : 'min-w-0'}>
           {scenario.id === COMMUTE_SCENARIO_ID ? (
             <CommuteGame
               completionXp={scenario.completionXp}

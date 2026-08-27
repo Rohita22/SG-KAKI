@@ -24,7 +24,6 @@ import {
   RotateCcw,
   Trash2,
   Trophy,
-  Undo2,
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -45,11 +44,10 @@ import {
 } from './kopiRecipes';
 
 const ART = {
-  background: '/scenes/scene2/kopi-rush-stall-v2.webp',
+  background: '/scenes/scene2/kopi-game/stall.webp',
 } as const;
 
 const MAX_HEARTS = 3;
-
 type Phase = 'briefing' | 'playing' | 'complete';
 type Feedback =
   | { kind: 'correct'; points: number }
@@ -60,13 +58,10 @@ function ingredient(id: IngredientId) {
 }
 
 function describeCup(items: IngredientId[]): string {
-  if (items.length === 0) return 'Empty cup';
+  if (items.length === 0) return 'empty';
   return Array.from(new Set(items))
-    .map((id) => {
-      const count = items.filter((item) => item === id).length;
-      return `${ingredient(id).shortLabel} ×${count}`;
-    })
-    .join(', ');
+    .map((id) => `${ingredient(id).shortLabel} ×${items.filter((item) => item === id).length}`)
+    .join(' · ');
 }
 
 function DraggableIngredient({
@@ -80,6 +75,7 @@ function DraggableIngredient({
 }) {
   const item = ingredient(id);
   const atLimit = count >= 3;
+  const isBase = id === 'coffee' || id === 'tea' || id === 'milo';
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id,
     disabled: disabled || atLimit,
@@ -92,45 +88,54 @@ function DraggableIngredient({
       disabled={disabled || atLimit}
       style={transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined}
       className={clsx(
-        'group relative flex min-h-24 touch-none flex-col items-center justify-end rounded-2xl border border-white/50 bg-[#fff8e8]/92 px-1 pb-2 pt-1 text-center text-sg-navy shadow-[0_8px_18px_rgba(55,31,12,0.2)] backdrop-blur-sm transition-all focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sg-xp/45 sm:min-h-28',
-        'cursor-grab hover:-translate-y-1 hover:bg-white active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-45',
+        'group relative flex touch-none flex-col items-center justify-end border-0 bg-transparent p-0 text-center text-sg-navy transition-all focus-visible:scale-105 focus-visible:outline-none',
+        isBase ? 'h-[clamp(6.5rem,21vh,10.5rem)]' : 'h-[clamp(5.75rem,18vh,9rem)]',
+        'cursor-grab hover:-translate-y-1 active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-45',
         isDragging && 'z-30 opacity-20',
       )}
       {...listeners}
       {...attributes}
     >
-      <span className="relative flex h-14 w-full items-center justify-center transition-transform group-hover:scale-105 sm:h-20">
+      <span className="relative flex min-h-0 w-full flex-1 items-end justify-center transition-transform group-hover:scale-105">
         <IngredientVisual id={id} />
         {count > 0 && (
-          <span className="absolute right-1 top-0 flex size-7 items-center justify-center rounded-full border-2 border-white bg-sg-success text-xs font-black text-white shadow-md">
+          <span className="absolute right-0.5 top-0 flex size-5 items-center justify-center rounded-full border-2 border-white bg-sg-success text-[10px] font-black text-white shadow-md">
             ×{count}
           </span>
         )}
       </span>
-      <span className="max-w-full rounded-full bg-white/95 px-2 py-1 text-[9px] font-black leading-tight shadow-sm sm:text-[10px]">
-        {item.label}
-      </span>
-      <span className="mt-1 hidden text-[9px] font-bold uppercase tracking-wide text-sg-navy/40 lg:block">
-        {atLimit ? 'Maximum added' : 'Drag one portion'}
-      </span>
+      <span className="sr-only">{atLimit ? `${item.label}, maximum added` : `${item.label}, drag one portion`}</span>
     </button>
   );
 }
 
+// Sugar jar / ice scoop / milo powder art is wide, so object-contain letterboxes it small and floats it above the counter line. Scale up from the bottom edge to match the milk tins.
+const SMALL_ART = new Set<IngredientId>(['sugar', 'ice', 'milo-top']);
+
 function IngredientVisual({ id, large = false }: { id: IngredientId; large?: boolean }) {
   const item = ingredient(id);
-  const size = large ? 'h-28 w-32' : 'h-full w-full';
-  const image = item.image ?? '/scenes/scene2/game/ingredients-v2/ice.webp';
-  return <img src={image} alt="" draggable={false} className={clsx(size, 'object-contain drop-shadow-lg')} />;
+  const isBase = id === 'coffee' || id === 'tea' || id === 'milo';
+  const size = large
+    ? 'h-28 w-32'
+    : isBase
+      ? 'h-[clamp(6.25rem,20vh,10rem)] w-full'
+      : 'h-[clamp(5.5rem,17vh,7.5rem)] w-full';
+  const image = item.image;
+  return (
+    <img
+      src={image}
+      alt=""
+      draggable={false}
+      className={clsx(size, 'object-contain drop-shadow-lg', !large && SMALL_ART.has(id) && 'origin-bottom scale-[1.45] object-bottom')}
+    />
+  );
 }
 
 function DrinkDropZone({
   selected,
-  onRemove,
   cupKey,
 }: {
   selected: IngredientId[];
-  onRemove: (id: IngredientId) => void;
   cupKey: string;
 }) {
   const { isOver, setNodeRef } = useDroppable({ id: 'drink-cup' });
@@ -139,38 +144,20 @@ function DrinkDropZone({
     <div
       ref={setNodeRef}
       className={clsx(
-        'relative flex min-h-56 min-w-0 flex-col items-center justify-center rounded-[2rem] border-2 border-dashed px-3 pb-4 pt-9 transition-all sm:min-h-64 sm:min-w-44',
+        'relative flex h-[clamp(7rem,23vh,12rem)] min-w-0 flex-col items-center justify-end rounded-[2rem] px-1 pb-0 pt-1 transition-all',
         isOver
-          ? 'scale-105 border-sg-xp bg-sg-xp/25 shadow-[0_0_0_8px_rgba(251,191,36,0.15)]'
-          : 'border-white/55 bg-[#fff8e8]/48 shadow-[0_12px_24px_rgba(55,31,12,0.16)] backdrop-blur-[2px]',
+          ? 'scale-105 bg-sg-xp/18 shadow-[0_0_0_8px_rgba(251,191,36,0.12)]'
+          : 'bg-transparent',
       )}
       aria-label="Drink cup drop zone"
       data-drop-cup
     >
-      <span className="absolute top-2 rounded-full bg-sg-navy px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm">
-        {isOver ? 'Release to pour' : selected.length ? 'Keep building' : 'Drop here'}
-      </span>
-      <motion.div key={cupKey} initial={{ opacity: 0, y: -18, rotate: -5 }} animate={{ opacity: 1, y: 0, rotate: 0 }}>
+      <motion.div key={cupKey} initial={{ opacity: 0, y: -18, rotate: -5 }} animate={{ opacity: 1, y: 0, rotate: 0 }} className="flex min-h-0 w-full flex-1 items-center justify-center">
         <DrinkPreview selected={selected} />
       </motion.div>
-      {selected.length > 0 && (
-        <div className="absolute inset-x-1 bottom-1 flex flex-wrap justify-center gap-1">
-          {Array.from(new Set(selected)).map((id) => {
-            const count = selected.filter((item) => item === id).length;
-            return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => onRemove(id)}
-              className="rounded-full bg-white px-2 py-1 text-[10px] font-black text-sg-blue shadow-sm hover:bg-sg-bg"
-              title={`Remove ${ingredient(id).label}`}
-            >
-              {ingredient(id).shortLabel} ×{count}
-            </button>
-            );
-          })}
-        </div>
-      )}
+      <span className="mt-1 min-h-5 text-center text-[10px] font-black text-white/85" aria-live="polite">
+        {selected.length === 0 ? 'EMPTY CUP' : `${selected.length} ${selected.length === 1 ? 'PORTION' : 'PORTIONS'}`}
+      </span>
     </div>
   );
 }
@@ -179,18 +166,21 @@ function DrinkPreview({ selected }: { selected: IngredientId[] }) {
   const has = (id: IngredientId) => selected.includes(id);
   const iced = has('ice');
   const liquidColor = has('milo')
-    ? '#714020'
+    ? '#7a351b'
     : has('tea')
-      ? '#9a5828'
+      ? '#d16f1e'
       : has('coffee')
-        ? '#4c2518'
-        : '#dbeafe';
+        ? '#35140c'
+        : '#d8eef5';
   const milkPortions = selected.filter((id) => id === 'condensed' || id === 'evaporated').length;
-  const milkOpacity = Math.min(0.58, milkPortions * 0.2);
-  const fillHeight = selected.length === 0 ? 8 : Math.min(78, 22 + selected.length * 10);
+  const sugarPortions = selected.filter((id) => id === 'sugar').length;
+  const milkOpacity = Math.min(0.46, milkPortions * 0.16);
+  const fillPixels = selected.length === 0 ? 0 : Math.min(128, 34 + selected.length * 17);
+  const liquidY = 164 - fillPixels;
+  const iceY = Math.max(38, liquidY + 7);
 
   return (
-    <div className="relative flex h-32 w-28 items-end justify-center sm:h-40 sm:w-32" aria-label="Your drink">
+    <div className="relative flex h-full max-h-[11rem] w-24 items-end justify-center sm:w-28" aria-label="Your drink">
       {!iced && (has('coffee') || has('tea') || has('milo')) && (
         <div className="absolute left-1/2 top-0 flex -translate-x-1/2 gap-2" aria-hidden="true">
           {[0, 1].map((i) => (
@@ -204,31 +194,52 @@ function DrinkPreview({ selected }: { selected: IngredientId[] }) {
         </div>
       )}
 
-      <div
-        className={clsx(
-          'relative overflow-hidden border-[5px] border-[#f5ead6] bg-white/30 shadow-[0_12px_24px_rgba(44,24,11,0.28)]',
-          iced ? 'h-28 w-20 rounded-b-2xl rounded-t-lg sm:h-36 sm:w-24' : 'h-24 w-24 rounded-b-[2.2rem] rounded-t-xl sm:h-28 sm:w-28',
-        )}
-      >
-        <motion.div
-          className="absolute inset-x-0 bottom-0"
-          animate={{ height: `${fillHeight}%`, backgroundColor: liquidColor }}
-          transition={{ type: 'spring', stiffness: 180, damping: 20 }}
-        >
-          <div className="absolute inset-0 bg-white" style={{ opacity: milkOpacity }} />
-          {has('sugar') && <div className="absolute inset-x-0 bottom-0 h-2 bg-amber-100/30" />}
-          {has('milo-top') && <div className="absolute inset-x-0 top-0 h-4 bg-[#3f2418] shadow-[0_2px_0_rgba(255,255,255,0.12)]" />}
-        </motion.div>
-        {iced && (
-          <div className="absolute inset-x-1 top-2 flex flex-wrap justify-center gap-1" aria-hidden="true">
-            {[0, 1, 2, 3].map((i) => (
-              <span key={i} className="size-3 rotate-12 rounded-sm border border-white/80 bg-sky-100/65 shadow-sm" />
-            ))}
-          </div>
-        )}
-        <div className="absolute left-1/2 top-1/2 size-8 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#315d43]/55 opacity-70" />
-      </div>
-      {!iced && <div className="absolute right-0 top-[47%] h-10 w-7 rounded-r-full border-[5px] border-l-0 border-[#f5ead6]" />}
+      <svg viewBox="0 0 120 180" className="relative z-10 h-full w-full overflow-visible drop-shadow-[0_12px_14px_rgba(44,24,11,0.3)]" aria-hidden="true">
+        <defs>
+          <linearGradient id="plastic-cup" x1="0" x2="1">
+            <stop offset="0" stopColor="#fff" stopOpacity="0.42" />
+            <stop offset="0.48" stopColor="#fff8e7" stopOpacity="0.08" />
+            <stop offset="1" stopColor="#fff" stopOpacity="0.5" />
+          </linearGradient>
+          <clipPath id="cup-inside">
+            <path d="M20 24 H100 L89 157 Q88 168 77 171 H43 Q32 168 31 157 Z" />
+          </clipPath>
+        </defs>
+        <g clipPath="url(#cup-inside)">
+          <motion.rect
+            data-cup-liquid
+            x="17"
+            width="86"
+            animate={{ y: liquidY, height: fillPixels, fill: liquidColor }}
+            transition={{ type: 'spring', stiffness: 180, damping: 20 }}
+          />
+          <motion.rect x="17" width="86" fill="#f5c98f" opacity={milkOpacity} animate={{ y: liquidY, height: fillPixels }} transition={{ type: 'spring', stiffness: 180, damping: 20 }} />
+          {fillPixels > 0 && <rect x="20" y={liquidY} width="80" height="4" rx="2" fill="#efae63" opacity="0.8" />}
+          {milkPortions > 0 && (
+            <motion.path
+              d={`M28 ${liquidY + 20} C45 ${liquidY + 5}, 72 ${liquidY + 34}, 94 ${liquidY + 15}`}
+              fill="none"
+              stroke="#ffe4b8"
+              strokeWidth="7"
+              strokeLinecap="round"
+              animate={{ pathLength: [0.35, 1, 0.35], opacity: [0.35, 0.75, 0.35] }}
+              transition={{ duration: 2.4, repeat: Infinity }}
+            />
+          )}
+          {sugarPortions > 0 && Array.from({ length: Math.min(8, sugarPortions * 4) }, (_, index) => (
+            <circle key={index} cx={41 + (index % 4) * 13} cy={154 - Math.floor(index / 4) * 8} r="2.3" fill="#fff0c9" />
+          ))}
+          {iced && [30, 49, 69, 87].map((x, index) => (
+            <rect key={x} x={x} y={iceY + (index % 2) * 8} width="15" height="15" rx="3" transform={`rotate(${index % 2 ? 10 : -8} ${x + 7} ${iceY + 7})`} fill="#d9f3ff" fillOpacity="0.92" stroke="#fff" strokeWidth="2" />
+          ))}
+          {has('milo-top') && <rect x="20" y={liquidY} width="80" height="10" rx="4" fill="#3b1d12" />}
+        </g>
+        <path d="M18 23 H102 L91 158 Q90 172 78 175 H42 Q30 172 29 158 Z" fill="url(#plastic-cup)" stroke="#f5e5c9" strokeWidth="3" />
+        <ellipse cx="60" cy="23" rx="45" ry="10" fill="#fff" fillOpacity="0.14" stroke="#f7e8cf" strokeWidth="4" />
+        <ellipse cx="60" cy="23" rx="38" ry="6" fill="none" stroke="#d8c6aa" strokeOpacity="0.72" strokeWidth="2" />
+        {[50, 78, 106, 134].map((y) => <path key={y} d={`M25 ${y} Q60 ${y + 5} 95 ${y}`} fill="none" stroke="#fff8e8" strokeOpacity="0.55" strokeWidth="2" />)}
+        <path d="M37 30 L43 158" stroke="#fff" strokeOpacity="0.38" strokeWidth="5" strokeLinecap="round" />
+      </svg>
       <div className="absolute bottom-0 h-3 w-full rounded-[50%] bg-black/15 blur-sm" />
     </div>
   );
@@ -308,7 +319,7 @@ function Codebook({ onClose }: { onClose: () => void }) {
 
 function OrderTicket({ recipe, orderNumber, total }: { recipe: KopiRecipe; orderNumber: number; total: number }) {
   return (
-    <motion.div
+    <motion.div data-kopi-ticket
       key={recipe.id}
       initial={{ opacity: 0, x: -24, rotate: -2 }}
       animate={{ opacity: 1, x: 0, rotate: -1 }}
@@ -384,15 +395,6 @@ export function KopiGame({ completionXp, onSessionComplete, onDone }: KopiGamePr
     completeFired.current = false;
   }
 
-  function removeIngredient(id: IngredientId) {
-    if (feedback) return;
-    setHint(null);
-    setSelected((items) => {
-      const index = items.lastIndexOf(id);
-      return index < 0 ? items : [...items.slice(0, index), ...items.slice(index + 1)];
-    });
-  }
-
   function handleDragStart(event: DragStartEvent) {
     setActiveDrag(event.active.id as IngredientId);
   }
@@ -418,11 +420,6 @@ export function KopiGame({ completionXp, onSessionComplete, onDone }: KopiGamePr
     });
   }
 
-  function askForHint() {
-    if (!current || feedback) return;
-    setHint(getBuildHint(selected, current.ingredients));
-  }
-
   function discardDrink() {
     setSelected([]);
     setHint(null);
@@ -432,9 +429,9 @@ export function KopiGame({ completionXp, onSessionComplete, onDone }: KopiGamePr
     roundStartedAt.current = Date.now();
   }
 
-  function undoIngredient() {
-    setSelected((items) => items.slice(0, -1));
-    setHint(null);
+  function askForHint() {
+    if (!current || feedback) return;
+    setHint(getBuildHint(selected, current.ingredients));
   }
 
   function serveDrink() {
@@ -482,12 +479,12 @@ export function KopiGame({ completionXp, onSessionComplete, onDone }: KopiGamePr
     setRoundIndex(0);
     setSelected([]);
     setFeedback(null);
+    setHint(null);
     setScore(0);
     setHearts(MAX_HEARTS);
     setStreak(0);
     setBestStreak(0);
     setSeconds(0);
-    setHint(null);
     setActiveDrag(null);
     setCupVersion((value) => value + 1);
     completeFired.current = false;
@@ -496,10 +493,10 @@ export function KopiGame({ completionXp, onSessionComplete, onDone }: KopiGamePr
   const rank = score >= 1650 ? 'Kopi Master' : score >= 1250 ? 'Stall Regular' : 'Kopi Rookie';
 
   return (
-    <div className="relative overflow-hidden rounded-3xl bg-white shadow-card">
+    <div data-kopi-root className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl bg-white shadow-card">
       <AnimatePresence>{showCodebook && <Codebook onClose={() => setShowCodebook(false)} />}</AnimatePresence>
 
-      <header className="flex flex-wrap items-center justify-between gap-3 bg-sg-navy px-4 py-3 text-white sm:px-5">
+      <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 bg-sg-navy px-4 py-3 text-white sm:px-5">
         <div className="flex items-center gap-3">
           <span className="flex size-10 items-center justify-center rounded-2xl bg-sg-xp text-xl shadow-sm">☕</span>
           <div>
@@ -516,18 +513,20 @@ export function KopiGame({ completionXp, onSessionComplete, onDone }: KopiGamePr
               <span className="rounded-full bg-white/10 px-3 py-2">{score.toLocaleString()} pts</span>
             </>
           )}
-          <button type="button" onClick={() => setShowCodebook(true)} aria-label="Open codebook" className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-2 transition-colors hover:bg-white/20">
-            <BookOpen className="size-4" />
-            <span className="hidden sm:inline">Codebook</span>
-          </button>
+          {phase !== 'playing' && (
+            <button type="button" onClick={() => setShowCodebook(true)} aria-label="Open codebook" className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-2 transition-colors hover:bg-white/20">
+              <BookOpen className="size-4" />
+              <span className="hidden sm:inline">Codebook</span>
+            </button>
+          )}
         </div>
       </header>
 
       {phase === 'briefing' && (
-        <div className="relative min-h-[650px] overflow-hidden bg-[#e6b46b]">
+        <div className="relative flex min-h-0 flex-1 overflow-hidden bg-[#e6b46b]">
           <img src={ART.background} alt="Auntie Poh at her illustrated kopitiam drinks stall" className="absolute inset-0 size-full object-cover object-[88%_center] sm:object-[58%_center]" />
           <div className="absolute inset-0 bg-gradient-to-r from-sg-navy/80 via-sg-navy/36 to-transparent" />
-          <div className="relative flex min-h-[650px] items-end p-5 sm:items-center sm:p-8">
+          <div className="relative flex w-full items-end overflow-y-auto p-4 sm:items-center sm:p-8">
             <div className="w-full max-w-lg rounded-[2rem] border border-white/20 bg-sg-navy/88 p-5 text-white shadow-card-lg backdrop-blur-md sm:p-7">
               <p className="text-xs font-black uppercase tracking-[0.2em] text-sg-xp">Your first stall shift</p>
               <h3 className="mt-2 text-3xl font-black leading-tight sm:text-4xl">Hear the order. Build the cup.</h3>
@@ -555,11 +554,11 @@ export function KopiGame({ completionXp, onSessionComplete, onDone }: KopiGamePr
           onDragCancel={() => setActiveDrag(null)}
           onDragEnd={handleDragEnd}
         >
-          <div className="relative min-h-[980px] overflow-hidden bg-[#c98642] sm:min-h-[790px]">
+          <div data-kopi-stage className="relative flex min-h-0 flex-1 overflow-hidden bg-[#c98642]">
             <img src={ART.background} alt="Auntie Poh's kopitiam drink-making counter" className="absolute inset-0 size-full object-cover object-[88%_center] sm:object-[58%_center]" />
             <div className="absolute inset-0 bg-gradient-to-b from-sg-navy/24 via-transparent to-[#4d260f]/42" />
-            <div className="relative flex min-h-[980px] flex-col p-3 sm:min-h-[790px] sm:p-5">
-              <div className="flex items-start justify-between gap-3">
+            <div className="relative flex w-full min-h-0 flex-col overflow-hidden p-3 sm:p-4">
+              <div className="flex shrink-0 items-start justify-between gap-3">
                 <OrderTicket recipe={current} orderNumber={roundIndex + 1} total={orders.length} />
                 <div className="flex shrink-0 flex-col items-end gap-2">
                   <span className="flex items-center gap-1 rounded-full bg-sg-navy/82 px-3 py-2 text-xs font-black text-white shadow-sm backdrop-blur-sm">
@@ -569,57 +568,30 @@ export function KopiGame({ completionXp, onSessionComplete, onDone }: KopiGamePr
                 </div>
               </div>
 
-              <div className="min-h-24 flex-1 sm:min-h-16" />
+              <div className="min-h-2 flex-1" />
 
-              <div className="rounded-[2rem] border border-white/35 bg-[#4d260f]/22 p-3 shadow-[0_18px_50px_rgba(43,22,9,0.28)] backdrop-blur-[3px] sm:p-4">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-              <p className="rounded-full bg-sg-navy/76 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm">
-                Pick an ingredient · drop it into the cup
+              <div data-kopi-panel className="mx-auto flex w-full min-h-0 max-w-6xl shrink flex-col p-1 sm:p-2">
+            <div className="mb-2 flex shrink-0 flex-wrap items-center justify-between gap-2 sm:flex-nowrap">
+              <p className="rounded-full bg-sg-navy/76 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[0.12em] text-white shadow-sm">
+                {!hint && <>Drag each ingredient into the plastic cup · one drag = one portion</>}
+                {hint?.kind === 'add' && <>Cup: {describeCup(selected)} · Next: add 1 {ingredient(hint.ingredient).label}</>}
+                {hint?.kind === 'restart' && <>Wrong mix detected · discard this cup and restart</>}
+                {hint?.kind === 'ready' && <>Cup is correct · ready to serve</>}
               </p>
-              <div className="flex gap-2">
-                <button type="button" onClick={askForHint} className="flex min-h-10 items-center gap-1.5 rounded-xl bg-[#fff8e8]/94 px-3 text-xs font-black text-sg-navy shadow-sm hover:bg-white">
-                  <Lightbulb className="size-4 text-sg-orange" /> Ask for hint
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={askForHint} disabled={Boolean(feedback)} className="flex h-8 items-center gap-1 rounded-lg bg-[#fff8e8] px-3 text-[10px] font-black text-sg-navy shadow-sm disabled:opacity-40">
+                  <Lightbulb className="size-3.5 text-sg-orange" /> Hint
                 </button>
-                <button type="button" onClick={undoIngredient} disabled={selected.length === 0 || Boolean(feedback)} className="flex min-h-10 items-center gap-1.5 rounded-xl bg-white/86 px-3 text-xs font-black text-sg-navy/65 shadow-sm disabled:opacity-35">
-                  <Undo2 className="size-4" /> Undo
-                </button>
-                <button type="button" onClick={discardDrink} disabled={selected.length === 0 || Boolean(feedback)} className="flex min-h-10 items-center gap-1.5 rounded-xl bg-white/86 px-3 text-xs font-black text-sg-coral shadow-sm disabled:opacity-35">
-                  <Trash2 className="size-4" /> Discard drink
+                <button type="button" onClick={discardDrink} disabled={selected.length === 0 || Boolean(feedback)} className="flex h-8 items-center gap-1 rounded-lg bg-white px-3 text-[10px] font-black text-sg-coral shadow-sm disabled:opacity-40">
+                  <Trash2 className="size-3.5" /> Discard
                 </button>
               </div>
             </div>
 
-            <AnimatePresence initial={false}>
-              {hint && !feedback && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mb-4 overflow-hidden">
-                  <div className={clsx(
-                    'rounded-2xl border bg-[#fff8e8]/95 p-4 shadow-card backdrop-blur-sm',
-                    hint.kind === 'restart' ? 'border-sg-coral/35' : 'border-sg-xp/35',
-                  )}>
-                    <div className="grid gap-2 text-xs font-bold text-sg-navy/60 sm:grid-cols-2">
-                      <p><span className="font-black text-sg-navy">Order:</span> {current.name}</p>
-                      <p><span className="font-black text-sg-navy">In your cup:</span> {describeCup(selected)}</p>
-                    </div>
-                    <p className={clsx('mt-3 text-sm font-black', hint.kind === 'restart' ? 'text-sg-coral' : 'text-sg-navy')}>
-                      {hint.kind === 'add' && (
-                        <>Next step only: drag in 1 portion of {ingredient(hint.ingredient).label}.</>
-                      )}
-                      {hint.kind === 'restart' && (
-                        <>{ingredient(hint.ingredient).label} does not belong in this order, or there is too much of it. Discard this drink and restart.</>
-                      )}
-                      {hint.kind === 'ready' && <>Everything in the cup is correct. Serve it!</>}
-                    </p>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <section className="relative">
-              <div
-                className="relative grid grid-cols-2 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_11rem_minmax(0,1fr)] sm:gap-3"
-              >
-                <div className="grid grid-cols-2 gap-0.5 sm:gap-2">
-                  {INGREDIENTS.slice(0, 4).map((item) => (
+            <section className="relative shrink-0">
+              <div className="relative grid grid-cols-2 items-end gap-x-2 gap-y-2 sm:grid-cols-[minmax(0,3fr)_minmax(6rem,1fr)_minmax(0,5fr)] sm:gap-x-3">
+                <div className="grid grid-cols-3 items-end gap-1 sm:gap-2">
+                  {INGREDIENTS.slice(0, 3).map((item) => (
                     <DraggableIngredient
                       key={item.id}
                       id={item.id}
@@ -634,12 +606,11 @@ export function KopiGame({ completionXp, onSessionComplete, onDone }: KopiGamePr
                     key={`${current.id}-${cupVersion}`}
                     cupKey={`${current.id}-${cupVersion}`}
                     selected={selected}
-                    onRemove={removeIngredient}
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-0.5 sm:gap-2">
-                  {INGREDIENTS.slice(4).map((item) => (
+                <div className="grid grid-cols-5 items-end gap-1 sm:gap-2">
+                  {INGREDIENTS.slice(3).map((item) => (
                     <DraggableIngredient
                       key={item.id}
                       id={item.id}
@@ -651,8 +622,8 @@ export function KopiGame({ completionXp, onSessionComplete, onDone }: KopiGamePr
               </div>
             </section>
 
-            <Button size="lg" className="mt-4 w-full" disabled={selected.length === 0 || Boolean(feedback)} onClick={serveDrink}>
-              Serve {current.name} <span aria-hidden="true">→</span>
+            <Button data-kopi-serve className="mt-2 w-full shrink-0" disabled={selected.length === 0 || Boolean(feedback)} onClick={serveDrink}>
+              Serve <span aria-hidden="true">→</span>
             </Button>
               </div>
             </div>
@@ -698,10 +669,10 @@ export function KopiGame({ completionXp, onSessionComplete, onDone }: KopiGamePr
       )}
 
       {phase === 'complete' && (
-        <div className="relative min-h-[610px] overflow-hidden bg-sg-navy px-5 py-10 text-center text-white sm:px-8">
+        <div className="relative flex min-h-0 flex-1 items-center overflow-y-auto bg-sg-navy px-5 py-8 text-center text-white sm:px-8">
           <Confetti count={34} />
           <div className="absolute inset-0 opacity-20" style={{ backgroundImage: `url(${ART.background})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
-          <div className="relative mx-auto max-w-lg">
+          <div className="relative mx-auto w-full max-w-lg">
             <span className="mx-auto flex size-20 items-center justify-center rounded-3xl bg-sg-xp text-sg-navy shadow-card-lg"><Trophy className="size-11" /></span>
             <p className="mt-6 text-xs font-black uppercase tracking-[0.2em] text-sg-xp">Shift complete</p>
             <h3 className="mt-2 text-4xl font-black">{rank}</h3>

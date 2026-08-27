@@ -7,4 +7,10 @@ Contents:
 - `aiScenarios.eat.before-kopi-game.ts.txt` — the original scenario configuration, persona prompt, visual-scene layering, and scripted ending.
 - `background.png`, `auntie-poh.png`, `player.png`, and `counter.png` — the four original scene assets.
 
-To restore the old experience, copy the `ordering-kopi` object from the backed-up scenario file into `src/content/countries/singapore/aiScenarios.eat.ts`, remove the `KopiGame` branch from `AIPracticeScreen.tsx`, and let the scenario route through `VisualNovelScene` again.
+These files are intentionally kept outside `public/` because the current game does not load them.
+
+To restore the old experience:
+
+1. Copy the `ordering-kopi` object from the backed-up scenario file into `src/content/countries/singapore/aiScenarios.eat.ts`.
+2. Copy the four PNG files from this folder into `public/scenes/scene2/`, preserving their filenames.
+3. Remove the `KopiGame` branch from `AIPracticeScreen.tsx` so the scenario routes through `VisualNovelScene` again.
