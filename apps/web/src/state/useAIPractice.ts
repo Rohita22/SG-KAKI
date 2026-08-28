@@ -5,7 +5,7 @@ import { useProgress } from './useProgress';
 import { activeCountryPack } from '@/content/activeCountryPack';
 import { groqAIPracticeService as aiPracticeService } from '@/services/aiPractice/groqAIPracticeService';
 
-export function useAIPractice(scenarioId: string) {
+export function useAIPractice(scenarioId: string, initialSuggestionBeat?: AIPracticeBeat) {
   const { state, recordAiMessage, resetAiPractice } = useProgress();
   const [isTyping, setIsTyping] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -54,10 +54,10 @@ export function useAIPractice(scenarioId: string) {
       };
       recordAiMessage(scenarioId, aiMsg);
       setIsTyping(false);
-      refreshSuggestions([aiMsg]);
+      refreshSuggestions([aiMsg], initialSuggestionBeat);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scenarioId, scenario, history.length]);
+  }, [scenarioId, scenario, history.length, initialSuggestionBeat]);
 
   /** `beat` overrides the scenario's own setup for this exchange — a multi-frame
    * scene passes what the CURRENT frame is about and what ends it. */

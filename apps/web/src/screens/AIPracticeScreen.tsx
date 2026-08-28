@@ -10,7 +10,7 @@ import { ConversationControls } from '@/components/practice/ConversationControls
 import { Button } from '@/components/ui/Button';
 import { ChallengeScene } from '@/components/challenges/scenes/ChallengeScene';
 import { VisualNovelScene } from '@/components/practice/VisualNovelScene';
-import { HawkerScene } from '@/components/practice/scene3/HawkerScene';
+import { HAWKER_OPENING_BEAT, HawkerScene } from '@/components/practice/scene3/HawkerScene';
 import { CommuteGame } from '@/components/practice/scene4/CommuteGame';
 import { KopiGame } from '@/components/practice/scene2/KopiGame';
 
@@ -57,7 +57,10 @@ export function AIPracticeScreen() {
     sendUserMessage,
     openFrame,
     restart,
-  } = useAIPractice(scenarioId ?? '');
+  } = useAIPractice(
+    scenarioId ?? '',
+    scenarioId === HAWKER_SCENARIO_ID ? HAWKER_OPENING_BEAT : undefined,
+  );
   const [draft, setDraft] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 

@@ -164,6 +164,13 @@ const FRAMES: Frame[] = [
   },
 ];
 
+export const HAWKER_OPENING_BEAT: AIPracticeBeat = {
+  situation: FRAMES[0].goal,
+  endWhen: FRAMES[0].endWhen,
+  historyFrom: 0,
+  suggestReplies: true,
+};
+
 function Bubble({
   text,
   side,
