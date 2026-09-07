@@ -1,0 +1,52 @@
+{
+  "compressionlevel":-1,
+  "height":12,
+  "infinite":false,
+  "layers":[
+    {"id":1,"image":"../environments/punggol-nel-platform-base.png","name":"BackgroundArt","type":"imagelayer","visible":true,"x":0,"y":0},
+    {"id":6,"name":"Reference","objects":[],"type":"objectgroup"},
+    {"id":2,"name":"Environment","objects":[
+      {"height":210,"id":1,"name":"Platform B towards Punggol Coast","type":"platform-side","width":780,"x":0,"y":480},
+      {"height":210,"id":2,"name":"Central island circulation","type":"island-platform","width":620,"x":780,"y":480},
+      {"height":210,"id":3,"name":"Platform A towards HarbourFront","type":"platform-side","width":776,"x":1400,"y":480}
+    ],"type":"objectgroup"},
+    {"id":7,"name":"Collision","objects":[],"type":"objectgroup"},
+    {"id":3,"name":"Interactions","objects":[
+      {"height":224,"id":4,"name":"Punggol Coast platform side","properties":[{"name":"action","type":"string","value":"choose-direction"},{"name":"direction","type":"string","value":"Punggol Coast"}],"type":"direction-zone","width":720,"x":0,"y":500},
+      {"height":224,"id":5,"name":"HarbourFront platform side","properties":[{"name":"action","type":"string","value":"choose-direction"},{"name":"direction","type":"string","value":"HarbourFront"}],"type":"direction-zone","width":720,"x":1456,"y":500},
+      {"height":170,"id":6,"name":"HarbourFront boarding zone","properties":[{"name":"action","type":"string","value":"board"},{"name":"direction","type":"string","value":"HarbourFront"}],"type":"board","width":300,"x":1580,"y":500},
+      {"height":724,"id":7,"name":"Platform direction choice","properties":[{"name":"correctDirection","type":"string","value":"HarbourFront"},{"name":"wrongDirection","type":"string","value":"Punggol Coast"}],"type":"choice","width":2176,"x":0,"y":0}
+    ],"type":"objectgroup"},
+    {"id":4,"name":"Spawns","objects":[
+      {"id":8,"name":"player-start","point":true,"type":"player","x":1088,"y":660},
+      {"id":9,"name":"train-start","point":true,"type":"vehicle","x":2600,"y":350},
+      {"id":10,"name":"train-stop","point":true,"type":"vehicle","x":1800,"y":350},
+      {"id":11,"name":"train-exit","point":true,"type":"vehicle","x":900,"y":350},
+      {"id":12,"name":"opposite-train-start","point":true,"type":"vehicle","x":-500,"y":350},
+      {"id":13,"name":"opposite-train-stop","point":true,"type":"vehicle","x":360,"y":350},
+      {"id":14,"name":"opposite-train-exit","point":true,"type":"vehicle","x":1220,"y":350}
+    ],"type":"objectgroup"},
+    {"id":8,"name":"Paths","objects":[
+      {"id":16,"name":"HarbourFront train arrival","polyline":[{"x":0,"y":0},{"x":-800,"y":0},{"x":-1700,"y":0}],"type":"vehicle-path","x":2600,"y":350},
+      {"id":17,"name":"Punggol Coast train arrival","polyline":[{"x":0,"y":0},{"x":860,"y":0},{"x":1720,"y":0}],"type":"vehicle-path","x":-500,"y":350}
+    ],"type":"objectgroup"},
+    {"id":5,"name":"Camera","objects":[{"height":724,"id":15,"name":"Platform framing","type":"camera","width":2176,"x":0,"y":0}],"type":"objectgroup"}
+  ],
+  "nextlayerid":9,
+  "nextobjectid":18,
+  "orientation":"orthogonal",
+  "properties":[
+    {"name":"displayName","type":"string","value":"NE17 Punggol — Continuous North East Line Island Platform"},
+    {"name":"direction","type":"string","value":"HarbourFront"},
+    {"name":"correctDirection","type":"string","value":"HarbourFront"},
+    {"name":"lineColor","type":"color","value":"#ff7c3fb5"}
+  ],
+  "renderorder":"right-down",
+  "tiledversion":"1.12.2",
+  "tileheight":64,
+  "tilesets":[],
+  "tilewidth":64,
+  "type":"map",
+  "version":"1.10",
+  "width":34
+}

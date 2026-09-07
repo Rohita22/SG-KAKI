@@ -1,16 +1,17 @@
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const sceneDir = path.resolve(scriptDir, '../game-production/scene4');
+const publicPropsDir = path.resolve(scriptDir, '../public/scenes/scene4/props');
 
 const assets = [
-  ['kadaloor-shelter-source.png', 'kadaloor-shelter-v2.png', 24],
-  ['kadaloor-bench-source.png', 'kadaloor-bench-v2.png', 20],
-  ['kadaloor-ad-stand-source.png', 'kadaloor-ad-stand-v2.png', 20],
-  ['kadaloor-bollard-source.png', 'kadaloor-bollard-v2.png', 18],
-  ['kadaloor-stop-pole-source.png', 'kadaloor-stop-pole-v2.png', 20],
+  ['kadaloor-shelter-source.png', 'kadaloor-shelter.png', 24],
+  ['kadaloor-bench-source.png', 'kadaloor-bench.png', 20],
+  ['kadaloor-bollard-source.png', 'kadaloor-bollard.png', 18],
+  ['kadaloor-stop-pole-source.png', 'kadaloor-stop-pole.png', 20],
 ];
 
 function removeChromaGreen(input) {
@@ -83,6 +84,9 @@ async function processAsset(sourceName, outputName, padding) {
     .extract({ left, top, width, height })
     .png()
     .toFile(outputPath);
+
+  await fs.mkdir(publicPropsDir, { recursive: true });
+  await fs.copyFile(outputPath, path.join(publicPropsDir, outputName));
 
   return `${outputName} ${width}x${height}`;
 }

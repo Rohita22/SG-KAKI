@@ -1,3 +1,4 @@
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
@@ -5,7 +6,8 @@ import sharp from 'sharp';
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const sceneDir = path.resolve(scriptDir, '../game-production/scene4/characters');
 const inputPath = path.join(sceneDir, 'source/player-walk-right-v1-chroma.png');
-const outputPath = path.join(sceneDir, 'player-walk-right-v1.png');
+const outputPath = path.join(sceneDir, 'player-walk-right.png');
+const publicPath = path.resolve(scriptDir, '../public/scenes/scene4/characters/player-walk-right.png');
 
 const FRAME_WIDTH = 512;
 const FRAME_HEIGHT = 768;
@@ -158,5 +160,7 @@ await sharp({
   )
   .png()
   .toFile(outputPath);
+
+await fs.copyFile(outputPath, publicPath);
 
 console.log(`Created ${outputPath} (${FRAME_WIDTH * frameBuffers.length}x${FRAME_HEIGHT}, 4 frames)`);

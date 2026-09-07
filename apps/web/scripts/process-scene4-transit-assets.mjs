@@ -1,9 +1,11 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import fs from 'node:fs/promises';
 import sharp from 'sharp';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const sceneDir = path.resolve(scriptDir, '../game-production/scene4');
+const publicVehiclesDir = path.resolve(scriptDir, '../public/scenes/scene4/vehicles');
 
 const closedBusSource = path.join(
   sceneDir,
@@ -13,11 +15,6 @@ const openBusSource = path.join(
   sceneDir,
   'vehicles/source/service-50-open-chroma.png',
 );
-const readerSource = path.join(
-  sceneDir,
-  'props/source/simplygo-reader-chroma.png',
-);
-
 function removeChromaGreen(input) {
   const rgba = Buffer.from(input);
 
@@ -130,21 +127,16 @@ const sharedBusBounds = paddedBounds(
   18,
 );
 
-const closedOutput = path.join(sceneDir, 'vehicles/service-50-closed-v1.png');
-const openOutput = path.join(sceneDir, 'vehicles/service-50-open-v1.png');
+const closedOutput = path.join(sceneDir, 'vehicles/service-50-doors-closed.png');
+const openOutput = path.join(sceneDir, 'vehicles/service-50-doors-open.png');
 const busInfo = await writeCrop(closedBus, sharedBusBounds, closedOutput);
 await writeCrop(openBus, sharedBusBounds, openOutput);
-
-const reader = await readRgba(readerSource, true);
-const readerBounds = paddedBounds(
-  foregroundBounds(reader.data, reader.width, reader.height),
-  reader.width,
-  reader.height,
-  24,
-);
-const readerOutput = path.join(sceneDir, 'props/simplygo-reader-v1.png');
-const readerInfo = await writeCrop(reader, readerBounds, readerOutput);
+await fs.mkdir(publicVehiclesDir, { recursive: true });
+await Promise.all([
+  fs.copyFile(closedOutput, path.join(publicVehiclesDir, 'service-50-doors-closed.png')),
+  fs.copyFile(openOutput, path.join(publicVehiclesDir, 'service-50-doors-open.png')),
+]);
 
 console.log(
-  `Created synchronized bus sprites ${busInfo.width}x${busInfo.height} and fare reader ${readerInfo.width}x${readerInfo.height}`,
+  `Created synchronized bus sprites ${busInfo.width}x${busInfo.height}`,
 );

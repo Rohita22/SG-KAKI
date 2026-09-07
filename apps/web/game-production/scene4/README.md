@@ -28,14 +28,25 @@ position or animate physical game-world objects.
 ## Locked art direction
 
 `art-direction/scene4-style-scale-v2.png` is the approved concept sheet. The
-runtime currently implements the first connected vertical slice:
+runtime implements the complete connected commute:
 
 1. walk through the real-world-informed Kadaloor exterior with arrows or A/D;
 2. enter bus stop 65321 and use the sole action control, Raise Hand;
 3. watch service 50 arrive in the curbside lane and open its front door;
 4. physically walk into the front door;
 5. walk to the bus reader and trigger an automatic animated card tap;
-6. receive the live `ENTRY OK` response and continue down the aisle.
+6. receive the live `ENTRY OK` response, ride to Kadaloor, walk to the rear
+   reader, receive `EXIT OK`, and alight through the rear doors;
+7. transfer at Kadaloor to the Punggol-bound LRT and ride via Oasis and Damai;
+8. choose the HarbourFront-bound North East Line platform at Punggol;
+9. choose the Expo-bound Downtown Line platform at Little India and arrive at
+   Changi Business Park.
+
+The rail legs are authored in `maps/kadaloor-lrt.tmj`,
+`maps/punggol-nel.tmj`, and `maps/little-india-dtl.tmj`. They provide camera
+bounds, platform geometry, direction choices, boarding triggers, player
+spawns, train paths, and complete 2172×724 illustrated station backgrounds.
+Rail animation is Phaser-native; no generated videos are required.
 
 All physical coordinates come from Tiled. React owns only the quest HUD and
-the permitted Raise Hand action.
+the permitted action controls.

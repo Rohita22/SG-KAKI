@@ -2,6 +2,7 @@
   "name": "sg-kaki-monorepo",
   "private": true,
   "version": "0.0.0",
+  "packageManager": "pnpm@11.19.0",
   "scripts": {
     "dev": "concurrently -n server,web -c green,blue \"pnpm --filter server run dev\" \"pnpm --filter web run dev\"",
     "build": "pnpm --filter web run build && pnpm --filter server run build",

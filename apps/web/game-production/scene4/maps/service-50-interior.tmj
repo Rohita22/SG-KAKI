@@ -7,7 +7,7 @@
   "layers": [
     {
       "id": 1,
-      "image": "../props/bus-interior-entry-v5.png",
+      "image": "../props/bus-interior-entry-reference.png",
       "name": "BackgroundArt",
       "offsetx": 0,
       "offsety": 0,
@@ -52,15 +52,32 @@
           "name": "SimplyGo entry reader",
           "properties": [
             { "name": "action", "type": "string", "value": "attempt_carried_item" },
-            { "name": "mountedReaderX", "type": "int", "value": 900 },
-            { "name": "mountedReaderY", "type": "int", "value": 330 },
+            { "name": "mountedReaderX", "type": "int", "value": 720 },
+            { "name": "mountedReaderY", "type": "int", "value": 260 },
             { "name": "successMessage", "type": "string", "value": "ENTRY OK" }
           ],
           "rotation": 0,
           "type": "FareReader",
           "visible": true,
-          "width": 250,
-          "x": 780,
+          "width": 240,
+          "x": 560,
+          "y": 480
+        },
+        {
+          "height": 220,
+          "id": 15,
+          "name": "SimplyGo exit reader",
+          "properties": [
+            { "name": "action", "type": "string", "value": "tap_out" },
+            { "name": "mountedReaderX", "type": "int", "value": 1760 },
+            { "name": "mountedReaderY", "type": "int", "value": 370 },
+            { "name": "successMessage", "type": "string", "value": "EXIT OK" }
+          ],
+          "rotation": 0,
+          "type": "FareReader",
+          "visible": true,
+          "width": 240,
+          "x": 1580,
           "y": 480
         },
         {
@@ -73,8 +90,8 @@
           "rotation": 0,
           "type": "Trigger",
           "visible": true,
-          "width": 300,
-          "x": 1720,
+          "width": 260,
+          "x": 980,
           "y": 500
         },
         {
@@ -158,7 +175,7 @@
     }
   ],
   "nextlayerid": 7,
-  "nextobjectid": 15,
+  "nextobjectid": 16,
   "orientation": "orthogonal",
   "properties": [
     { "name": "displayName", "type": "string", "value": "SBS Transit Service 50 — Front Entrance" },

@@ -571,7 +571,7 @@ export function KopiGame({ completionXp, onSessionComplete, onDone }: KopiGamePr
               <div className="min-h-2 flex-1" />
 
               <div data-kopi-panel className="mx-auto flex w-full min-h-0 max-w-6xl shrink flex-col p-1 sm:p-2">
-            <div className="mb-2 flex shrink-0 flex-wrap items-center justify-between gap-2 sm:flex-nowrap">
+            <div className="relative z-10 mb-2 flex -translate-y-16 shrink-0 flex-wrap items-center justify-between gap-2 sm:flex-nowrap">
               <p className="rounded-full bg-sg-navy/76 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[0.12em] text-white shadow-sm">
                 {!hint && <>Drag each ingredient into the plastic cup · one drag = one portion</>}
                 {hint?.kind === 'add' && <>Cup: {describeCup(selected)} · Next: add 1 {ingredient(hint.ingredient).label}</>}
@@ -588,7 +588,7 @@ export function KopiGame({ completionXp, onSessionComplete, onDone }: KopiGamePr
               </div>
             </div>
 
-            <section className="relative shrink-0">
+            <section className="relative -translate-y-16 shrink-0">
               <div className="relative grid grid-cols-2 items-end gap-x-2 gap-y-2 sm:grid-cols-[minmax(0,3fr)_minmax(6rem,1fr)_minmax(0,5fr)] sm:gap-x-3">
                 <div className="grid grid-cols-3 items-end gap-1 sm:gap-2">
                   {INGREDIENTS.slice(0, 3).map((item) => (

@@ -7,7 +7,7 @@
   "layers": [
     {
       "id": 8,
-      "image": "../props/kadaloor-exterior-base-v2.png",
+      "image": "../props/kadaloor-bus-stop-background.png",
       "name": "BackgroundArt",
       "offsetx": 0,
       "offsety": 0,
@@ -311,7 +311,7 @@
   "nextobjectid": 46,
   "orientation": "orthogonal",
   "properties": [
-    { "name": "backgroundAsset", "type": "file", "value": "../props/kadaloor-exterior-base-v2.png" },
+    { "name": "backgroundAsset", "type": "file", "value": "../props/kadaloor-bus-stop-background.png" },
     { "name": "displayName", "type": "string", "value": "Kadaloor — Bus Stop 65321 and PE5 Exit B" },
     { "name": "locationId", "type": "string", "value": "kadaloor-exterior" },
     { "name": "playerArtHeight", "type": "int", "value": 120 },

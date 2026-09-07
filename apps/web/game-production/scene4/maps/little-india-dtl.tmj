@@ -1,0 +1,326 @@
+{
+  "compressionlevel": -1,
+  "height": 12,
+  "infinite": false,
+  "layers": [
+    {
+      "id": 8,
+      "image": "../environments/little-india-dtl-platform-base.png",
+      "name": "BackgroundArt",
+      "offsetx": 0,
+      "offsety": 0,
+      "opacity": 1,
+      "parallaxx": 1,
+      "parallaxy": 1,
+      "repeatx": false,
+      "repeaty": false,
+      "type": "imagelayer",
+      "visible": true,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": 1,
+      "name": "Reference",
+      "objects": [],
+      "opacity": 1,
+      "type": "objectgroup",
+      "visible": true,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": 2,
+      "name": "Environment",
+      "objects": [
+        {
+          "height": 172,
+          "id": 1,
+          "name": "Station header",
+          "type": "header",
+          "width": 2176,
+          "x": 0,
+          "y": 0
+        },
+        {
+          "height": 210,
+          "id": 2,
+          "name": "Platform A towards Bukit Panjang",
+          "type": "platform-side",
+          "width": 780,
+          "x": 0,
+          "y": 480
+        },
+        {
+          "height": 322,
+          "id": 3,
+          "name": "Central island circulation",
+          "type": "island-platform",
+          "width": 620,
+          "x": 780,
+          "y": 480
+        },
+        {
+          "height": 210,
+          "id": 13,
+          "name": "Platform B towards Expo",
+          "type": "platform-side",
+          "width": 776,
+          "x": 1400,
+          "y": 480
+        }
+      ],
+      "opacity": 1,
+      "type": "objectgroup",
+      "visible": true,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": 3,
+      "name": "Collision",
+      "objects": [
+        {
+          "height": 48,
+          "id": 4,
+          "name": "Platform edge",
+          "type": "solid",
+          "width": 2176,
+          "x": 0,
+          "y": 500
+        }
+      ],
+      "opacity": 1,
+      "type": "objectgroup",
+      "visible": true,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": 4,
+      "name": "Interactions",
+      "objects": [
+        {
+          "height": 170,
+          "id": 5,
+          "name": "Expo boarding zone",
+          "properties": [
+            {
+              "name": "action",
+              "type": "string",
+              "value": "board"
+            },
+            {
+              "name": "direction",
+              "type": "string",
+              "value": "Expo"
+            }
+          ],
+          "type": "board",
+          "width": 300,
+          "x": 1580,
+          "y": 500
+        },
+        {
+          "height": 224,
+          "id": 14,
+          "name": "Bukit Panjang platform side",
+          "properties": [
+            { "name": "action", "type": "string", "value": "choose-direction" },
+            { "name": "direction", "type": "string", "value": "Bukit Panjang" }
+          ],
+          "type": "direction-zone",
+          "width": 720,
+          "x": 0,
+          "y": 500
+        },
+        {
+          "height": 224,
+          "id": 15,
+          "name": "Expo platform side",
+          "properties": [
+            { "name": "action", "type": "string", "value": "choose-direction" },
+            { "name": "direction", "type": "string", "value": "Expo" }
+          ],
+          "type": "direction-zone",
+          "width": 720,
+          "x": 1456,
+          "y": 500
+        },
+        {
+          "height": 720,
+          "id": 6,
+          "name": "Platform direction choice",
+          "properties": [
+            {
+              "name": "correctDirection",
+              "type": "string",
+              "value": "Expo"
+            },
+            {
+              "name": "wrongDirection",
+              "type": "string",
+              "value": "Bukit Panjang"
+            }
+          ],
+          "type": "choice",
+          "width": 2176,
+          "x": 0,
+          "y": 0
+        }
+      ],
+      "opacity": 1,
+      "type": "objectgroup",
+      "visible": true,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": 5,
+      "name": "Spawns",
+      "objects": [
+        {
+          "height": 0,
+          "id": 7,
+          "name": "player-start",
+          "point": true,
+          "type": "player",
+          "width": 0,
+          "x": 1088,
+          "y": 660
+        },
+        {
+          "height": 0,
+          "id": 8,
+          "name": "train-start",
+          "point": true,
+          "type": "vehicle",
+          "width": 0,
+          "x": 2860,
+          "y": 350
+        },
+        {
+          "height": 0,
+          "id": 9,
+          "name": "train-stop",
+          "point": true,
+          "type": "vehicle",
+          "width": 0,
+          "x": 1900,
+          "y": 350
+        },
+        {
+          "height": 0,
+          "id": 10,
+          "name": "train-exit",
+          "point": true,
+          "type": "vehicle",
+          "width": 0,
+          "x": 900,
+          "y": 350
+        },
+        {
+          "id": 16,
+          "name": "opposite-train-start",
+          "point": true,
+          "type": "vehicle",
+          "x": -720,
+          "y": 350
+        },
+        {
+          "id": 17,
+          "name": "opposite-train-stop",
+          "point": true,
+          "type": "vehicle",
+          "x": 100,
+          "y": 350
+        }
+      ],
+      "opacity": 1,
+      "type": "objectgroup",
+      "visible": true,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": 6,
+      "name": "Paths",
+      "objects": [
+        {
+          "id": 11,
+          "name": "DTL arrival path",
+          "polyline": [
+            {
+              "x": 0,
+              "y": 0
+            },
+            {
+              "x": -840,
+              "y": 0
+            },
+            {
+              "x": -2260,
+              "y": 0
+            }
+          ],
+          "type": "vehicle-path",
+          "x": 2860,
+          "y": 350
+        }
+      ],
+      "opacity": 1,
+      "type": "objectgroup",
+      "visible": true,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": 7,
+      "name": "Camera",
+      "objects": [
+        {
+          "height": 720,
+          "id": 12,
+          "name": "Platform framing",
+          "type": "camera",
+          "width": 2176,
+          "x": 0,
+          "y": 0
+        }
+      ],
+      "opacity": 1,
+      "type": "objectgroup",
+      "visible": true,
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "nextlayerid": 9,
+  "nextobjectid": 18,
+  "orientation": "orthogonal",
+  "properties": [
+    {
+      "name": "displayName",
+      "type": "string",
+      "value": "DT12 Little India — Downtown Line"
+    },
+    {
+      "name": "direction",
+      "type": "string",
+      "value": "Expo"
+    },
+    {
+      "name": "lineColor",
+      "type": "color",
+      "value": "#ff1261a0"
+    }
+  ],
+  "renderorder": "right-down",
+  "tiledversion": "1.12.2",
+  "tileheight": 64,
+  "tilesets": [],
+  "tilewidth": 64,
+  "type": "map",
+  "version": "1.10",
+  "width": 34
+}

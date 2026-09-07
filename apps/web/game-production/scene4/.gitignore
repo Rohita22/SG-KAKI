@@ -1,3 +1,4 @@
 *.tiled-session
 *.tmj~
 *.tsx~
+exports/

@@ -49,10 +49,10 @@ npm workspaces, two apps:
 ## Getting started
 
 ```bash
-npm install                          # installs both workspaces from the root
+pnpm install                         # installs both workspaces from the root
 cp apps/server/.env.example apps/server/.env
 # edit apps/server/.env and set GROQ_API_KEY (get one at https://console.groq.com)
-npm run dev                          # runs the backend (:8080) and frontend (:5183) together
+pnpm dev                             # runs the backend (:8080) and frontend (:5183) together
 ```
 
 Open the printed frontend URL. In dev, Vite proxies `/api/*` requests to the
@@ -66,12 +66,12 @@ those routes; nothing crashes).
 
 ## Scripts (run from repo root)
 
-- `npm run dev` — start backend + frontend together
-- `npm run dev:web` / `npm run dev:server` — start just one
-- `npm run build` — build both apps for production
-- `npm run test` — run the frontend's Vitest unit suite
-- `npm run test:e2e` — run the Playwright golden-path test
-- `npm run lint` — Oxlint (frontend)
+- `pnpm dev` — start backend + frontend together
+- `pnpm dev:web` / `pnpm dev:server` — start just one
+- `pnpm build` — build both apps for production
+- `pnpm test` — run the frontend's Vitest unit suite
+- `pnpm test:e2e` — run the Playwright golden-path test
+- `pnpm lint` — Oxlint (frontend)
 
 ## Environment variables
 

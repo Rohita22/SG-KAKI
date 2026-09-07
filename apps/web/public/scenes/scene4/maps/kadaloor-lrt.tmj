@@ -1,0 +1,218 @@
+{
+  "compressionlevel": -1,
+  "height": 12,
+  "infinite": false,
+  "layers": [
+    {
+      "id": 8,
+      "image": "../environments/kadaloor-lrt-platform.png",
+      "name": "BackgroundArt",
+      "offsetx": 0,
+      "offsety": 0,
+      "opacity": 1,
+      "parallaxx": 1,
+      "parallaxy": 1,
+      "repeatx": false,
+      "repeaty": false,
+      "type": "imagelayer",
+      "visible": true,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": 1,
+      "name": "Reference",
+      "objects": [],
+      "type": "objectgroup"
+    },
+    {
+      "id": 2,
+      "name": "Environment",
+      "objects": [
+        {
+          "height": 172,
+          "id": 1,
+          "name": "Station header",
+          "type": "header",
+          "width": 2176,
+          "x": 0,
+          "y": 0
+        },
+        {
+          "height": 160,
+          "id": 2,
+          "name": "Passenger platform",
+          "type": "platform",
+          "width": 2176,
+          "x": 0,
+          "y": 512
+        },
+        {
+          "height": 26,
+          "id": 3,
+          "name": "Green canopy",
+          "type": "canopy",
+          "width": 1120,
+          "x": 80,
+          "y": 197
+        }
+      ],
+      "type": "objectgroup"
+    },
+    {
+      "id": 3,
+      "name": "Collision",
+      "objects": [
+        {
+          "height": 48,
+          "id": 4,
+          "name": "Platform edge",
+          "type": "solid",
+          "width": 2176,
+          "x": 0,
+          "y": 500
+        }
+      ],
+      "type": "objectgroup"
+    },
+    {
+      "id": 4,
+      "name": "Interactions",
+      "objects": [
+        {
+          "height": 150,
+          "id": 5,
+          "name": "Punggol boarding zone",
+          "properties": [
+            {
+              "name": "action",
+              "type": "string",
+              "value": "board"
+            },
+            {
+              "name": "direction",
+              "type": "string",
+              "value": "Punggol"
+            }
+          ],
+          "type": "board",
+          "width": 220,
+          "x": 530,
+          "y": 500
+        }
+      ],
+      "type": "objectgroup"
+    },
+    {
+      "id": 5,
+      "name": "Spawns",
+      "objects": [
+        {
+          "id": 6,
+          "name": "player-start",
+          "point": true,
+          "type": "player",
+          "x": 220,
+          "y": 660
+        },
+        {
+          "id": 7,
+          "name": "train-start",
+          "point": true,
+          "type": "vehicle",
+          "x": 1480,
+          "y": 335
+        },
+        {
+          "id": 8,
+          "name": "train-stop",
+          "point": true,
+          "type": "vehicle",
+          "x": 640,
+          "y": 335
+        },
+        {
+          "id": 9,
+          "name": "train-exit",
+          "point": true,
+          "type": "vehicle",
+          "x": -780,
+          "y": 335
+        }
+      ],
+      "type": "objectgroup"
+    },
+    {
+      "id": 6,
+      "name": "Paths",
+      "objects": [
+        {
+          "id": 10,
+          "name": "Punggol LRT arrival path",
+          "polyline": [
+            {
+              "x": 0,
+              "y": 0
+            },
+            {
+              "x": -840,
+              "y": 0
+            },
+            {
+              "x": -2260,
+              "y": 0
+            }
+          ],
+          "type": "vehicle-path",
+          "x": 1480,
+          "y": 335
+        }
+      ],
+      "type": "objectgroup"
+    },
+    {
+      "id": 7,
+      "name": "Camera",
+      "objects": [
+        {
+          "height": 720,
+          "id": 11,
+          "name": "Platform framing",
+          "type": "camera",
+          "width": 2176,
+          "x": 0,
+          "y": 0
+        }
+      ],
+      "type": "objectgroup"
+    }
+  ],
+  "nextlayerid": 9,
+  "nextobjectid": 12,
+  "orientation": "orthogonal",
+  "properties": [
+    {
+      "name": "displayName",
+      "type": "string",
+      "value": "PE5 Kadaloor — Punggol LRT"
+    },
+    {
+      "name": "direction",
+      "type": "string",
+      "value": "Punggol"
+    },
+    {
+      "name": "lineColor",
+      "type": "color",
+      "value": "#ff159b72"
+    }
+  ],
+  "renderorder": "right-down",
+  "tiledversion": "1.12.2",
+  "tileheight": 64,
+  "tilesets": [],
+  "tilewidth": 64,
+  "type": "map",
+  "version": "1.10",
+  "width": 34
+}

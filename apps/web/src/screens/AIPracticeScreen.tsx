@@ -30,7 +30,10 @@ const HAWKER_SCENARIO_ID = 'hawker-lunch';
 const COMMUTE_SCENARIO_ID = 'commute-to-changi';
 const KOPI_SCENARIO_ID = 'ordering-kopi';
 /** Scenes that draw their own header/restart chrome, so the sidebar is redundant. */
-const FULL_BLEED_SCENE_IDS = new Set([COMMUTE_SCENARIO_ID, KOPI_SCENARIO_ID]);
+const FULL_BLEED_SCENE_IDS = new Set([
+  COMMUTE_SCENARIO_ID,
+  KOPI_SCENARIO_ID,
+]);
 const SELF_CONTAINED_SCENE_IDS = new Set([
   HAWKER_SCENARIO_ID,
   COMMUTE_SCENARIO_ID,

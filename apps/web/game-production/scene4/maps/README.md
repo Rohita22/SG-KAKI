@@ -6,6 +6,8 @@ priority over real-world scale.
 
 Required layers:
 
+- `BackgroundArt`: the complete opaque environment panorama shown by Tiled
+  and Phaser
 - `Reference`: editor-only scale and composition guides
 - `Environment`: physical location footprints used by the art pass
 - `Collision`: solid geometry consumed by Arcade Physics
@@ -27,3 +29,15 @@ standalone underground-MRT canopy and it never occupies the bus lane.
 At the foot of the real stair flight, the game plays three visible climbing
 animation cycles before transferring the player to `kadaloor-concourse`. The
 three cycles are interaction timing, not three physical stairs.
+
+## Rail topology
+
+- `kadaloor-lrt.tmj`: PE5 platform, Punggol-bound boarding zone, and compact
+  LRT arrival path.
+- `punggol-nel.tmj`: NE17 screen doors, HarbourFront/Punggol Coast direction
+  choice, and the HarbourFront-bound boarding zone.
+- `little-india-dtl.tmj`: DT12 screen doors, Expo/Bukit Panjang direction
+  choice, and the Expo-bound boarding zone.
+
+Each map owns its player spawn, train start/stop/exit points, platform
+collision edge, interaction metadata, and fixed 16:9 camera framing.
