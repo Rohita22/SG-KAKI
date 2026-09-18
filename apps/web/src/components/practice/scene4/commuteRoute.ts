@@ -4,7 +4,6 @@ export const SCENE4_ROUTE = [
     station: 'Kadaloor',
     service: 'Punggol LRT',
     direction: 'Punggol',
-    stops: ['Oasis', 'Damai', 'Punggol'],
     alightAt: 'Punggol',
     accent: 0x159b72,
   },
@@ -13,11 +12,6 @@ export const SCENE4_ROUTE = [
     station: 'Punggol',
     service: 'North East Line',
     direction: 'HarbourFront',
-    stops: [
-      'Sengkang', 'Buangkok', 'Hougang', 'Kovan', 'Serangoon', 'Woodleigh',
-      'Potong Pasir', 'Boon Keng', 'Farrer Park', 'Little India', 'Dhoby Ghaut',
-      'Clarke Quay', 'Chinatown', 'Outram Park', 'HarbourFront',
-    ],
     alightAt: 'Little India',
     accent: 0x7c3fb5,
   },
@@ -26,7 +20,6 @@ export const SCENE4_ROUTE = [
     station: 'Little India',
     service: 'Downtown Line',
     direction: 'Expo',
-    stops: ['Bendemeer', 'MacPherson', 'Expo'],
     alightAt: 'Expo',
     accent: 0x1261a0,
   },
@@ -54,6 +47,9 @@ export const SCENE4_ROUTE_GRAPH = {
     'little-india-transfer',
     'little-india-dtl',
     'expo-dtl-arrival',
+    'expo-fare-gates',
+    'expo-exit-d',
+    'the-signature-exterior',
   ],
 } as const;
 

@@ -2,11 +2,40 @@ import { useEffect, useRef, useState } from 'react';
 import Phaser from 'phaser';
 import { SCENE4_ROUTE } from './commuteRoute';
 import type { RailLegId } from './commuteRoute';
-import { RAIL_STOP_DWELL_MS, RAIL_STOP_FACTS } from './railStopFacts';
+import { nextBouncingStopIndex, RAIL_PLAYABLE_STOP_FACTS, RAIL_STOP_DWELL_MS } from './railStopFacts';
 import type { RailStopFact } from './railStopFacts';
+import {
+  PLAYER_ANCHORS,
+  PLAYER_TARGET_HEIGHT,
+  RAIL_SEAT_ANCHORS,
+  playerScaleFor,
+} from './characterMetrics';
+import type { PlayerScaleProfile } from './characterMetrics';
+import { canReleaseTransitionInput, clampToWalkableBounds } from './navigationSafety';
+import type { WalkableFloorBounds } from './navigationSafety';
+import { STATION_STAGES } from './stationConfig';
+import type {
+  DebugCheckpointId,
+  FareItemKind,
+  InteractionContext,
+  StationStageId,
+} from './sceneTypes';
+import { CONTEXT_COPY } from './sceneCopy';
+import { nearestAvailableSeatIndex } from './vehicleInterior';
+import { vehicleDoorPhaseFor } from './vehicleDoorPhase';
+import {
+  CompletionReward,
+  DebugCheckpointSelector,
+  DirectionControls,
+  FareBag,
+  TouchMovementControls,
+} from './CommuteControls';
+import { STATION_DESTINATIONS } from './stationTransitions';
 
 type ActiveRailStop = RailStopFact & {
   index: number;
+  nextStation?: string;
+  targetIsNext: boolean;
   legId: RailLegId;
   total: number;
 };
@@ -41,33 +70,6 @@ const RAIL_BACKGROUND_KEYS: Record<RailLegId, string> = {
   'punggol-nel': 'scene4-punggol-nel-background',
   'little-india-dtl': 'scene4-little-india-dtl-background',
 };
-type StationStageId =
-  | 'kadaloor-lrt-concourse'
-  | 'kadaloor-lrt-stairs'
-  | 'punggol-interchange'
-  | 'punggol-nel-escalator'
-  | 'little-india-nel-arrival'
-  | 'little-india-transfer'
-  | 'expo-dtl-arrival'
-  | 'expo-fare-gates';
-
-const STATION_STAGES: Record<StationStageId, {
-  background: string;
-  image: string;
-  context: InteractionContext;
-  map: string;
-  spawnX: number;
-  portalX: number;
-}> = {
-  'kadaloor-lrt-concourse': { background: 'scene4-kadaloor-lrt-concourse', image: 'kadaloor-lrt-concourse.png', context: 'lrt-gates', map: 'scene4-kadaloor-lrt-concourse-map', spawnX: 160, portalX: 1960 },
-  'kadaloor-lrt-stairs': { background: 'scene4-kadaloor-lrt-stairs', image: 'kadaloor-lrt-stairs.png', context: 'lrt-stairs', map: 'scene4-kadaloor-lrt-stairs-map', spawnX: 150, portalX: 1940 },
-  'punggol-interchange': { background: 'scene4-punggol-interchange', image: 'punggol-interchange-concourse.png', context: 'punggol-gates', map: 'scene4-punggol-interchange-map', spawnX: 160, portalX: 1940 },
-  'punggol-nel-escalator': { background: 'scene4-punggol-nel-escalator', image: 'punggol-nel-escalator.png', context: 'punggol-escalator', map: 'scene4-punggol-nel-escalator-map', spawnX: 680, portalX: 900 },
-  'little-india-nel-arrival': { background: 'scene4-little-india-nel-arrival', image: 'little-india-nel-platform.png', context: 'little-india-alight', map: 'scene4-little-india-nel-arrival-map', spawnX: 320, portalX: 1900 },
-  'little-india-transfer': { background: 'scene4-little-india-transfer', image: 'little-india-transfer-concourse.png', context: 'little-india-transfer', map: 'scene4-little-india-transfer-map', spawnX: 150, portalX: 1940 },
-  'expo-dtl-arrival': { background: 'scene4-expo-dtl-arrival', image: 'expo-dtl-platform.png', context: 'expo-alight', map: 'scene4-expo-dtl-arrival-map', spawnX: 320, portalX: 1900 },
-  'expo-fare-gates': { background: 'scene4-expo-fare-gates', image: 'expo-fare-concourse.png', context: 'expo-fare-gates', map: 'scene4-expo-fare-gates-map', spawnX: 1088, portalX: 1088 },
-};
 const TRAIN_KEYS: Record<RailLegId, string> = {
   'kadaloor-lrt': 'scene4-punggol-lrt-train',
   'punggol-nel': 'scene4-nel-train',
@@ -91,7 +93,10 @@ const PLATFORM_DOOR_KEYS: Partial<Record<RailLegId, { closed: string; open: stri
 const DTL_LEFT_END_WALL_KEY = 'scene4-dtl-left-end-wall';
 const DTL_RIGHT_END_WALL_KEY = 'scene4-dtl-right-end-wall';
 const TRAIN_DISPLAY: Record<RailLegId, { height: number; width: number; yOffset: number }> = {
-  'kadaloor-lrt': { height: 220, width: 920, yOffset: 70 },
+  // The LRT is a shorter two-car vehicle than the MRT consists, but its former
+  // 220px body made the 322px platform passenger taller than the entire train.
+  // Scale it around the fixed platform threshold so its doorway is human-sized.
+  'kadaloor-lrt': { height: 330, width: 1380, yOffset: 15 },
   // Keep the NEL cars large enough for their doors to align one-for-one with
   // the platform screen doors. The old 780px width compressed three cars into
   // a single door bank, making the body and door spacing look bent.
@@ -114,9 +119,8 @@ const LITTLE_INDIA_DTL_TRACK_MASKS = {
 } as const;
 const RAIL_WORLD_WIDTH = 2176;
 const RAIL_WORLD_HEIGHT = 724;
-type WalkableFloorBounds = { minY: number; maxY: number };
-const EXTERIOR_FLOOR_BOUNDS: WalkableFloorBounds = { minY: 430, maxY: 700 };
-const RAIL_INTERIOR_FLOOR_BOUNDS: WalkableFloorBounds = { minY: 590, maxY: 690 };
+const EXTERIOR_FLOOR_BOUNDS: WalkableFloorBounds = { minX: 60, maxX: 2116, minY: 430, maxY: 700 };
+const RAIL_INTERIOR_FLOOR_BOUNDS: WalkableFloorBounds = { minX: 60, maxX: 2116, minY: 590, maxY: 690 };
 const RAIL_PLATFORM_FLOOR_BOUNDS: Record<RailLegId, WalkableFloorBounds> = {
   'kadaloor-lrt': { minY: 512, maxY: 690 },
   'punggol-nel': { minY: 500, maxY: 690 },
@@ -133,6 +137,8 @@ const STATION_FLOOR_BOUNDS: Record<StationStageId, WalkableFloorBounds> = {
   'little-india-transfer': { minY: 470, maxY: 690 },
   'expo-dtl-arrival': { minY: 500, maxY: 690 },
   'expo-fare-gates': { minY: 300, maxY: 690 },
+  'expo-exit-d': { minY: 500, maxY: 690 },
+  'the-signature-exterior': { minY: 520, maxY: 690 },
 };
 const EXTERIOR_BACKGROUND_KEY = 'scene4-kadaloor-background';
 const SHELTER_KEY = 'scene4-kadaloor-shelter';
@@ -144,10 +150,8 @@ const INTERIOR_DOORS_CLOSED_KEY = 'scene4-service-50-interior-doors-closed';
 const INTERIOR_DOORS_OPEN_KEY = 'scene4-service-50-interior-doors-open';
 const INTERIOR_MOVING_KEY = 'scene4-service-50-interior-moving';
 const BUS_SEAT_KEY = 'scene4-service-50-seat';
-const BUS_SEAT_POSITIONS = [1048, 1144, 1240, 1336, 1432, 1528] as const;
-const BUS_SEAT_Y = 505;
-const RAIL_SEAT_POSITIONS = [690, 772, 854, 936, 1018, 1100, 1182, 1264, 1346] as const;
-const RAIL_SEAT_Y = 560;
+const BUS_SEAT_FALLBACK_POSITIONS = [1048, 1144, 1240, 1336, 1432, 1528] as const;
+const BUS_SEAT_FALLBACK_BOTTOM_Y = 505;
 const RAIL_EXIT_ZONES = [
   // These zones begin beyond the carriage floor. Approaching a door is not an
   // alight action; the passenger must walk upward through an open doorway and
@@ -178,7 +182,7 @@ const BUS_ROUTE_STOPS = [
 ] as const;
 const BUS_TRAVEL_BETWEEN_STOPS_MS = 2600;
 const BUS_NORMAL_DWELL_MS = 3500;
-const BUS_REQUESTED_DWELL_MS = 30_000;
+const BUS_REQUESTED_DWELL_MS = 5_000;
 const LIVE_SERVICE_MINUTE_MS = 2_500;
 const NEL_PLATFORM_DWELL_MS = 6_000;
 const NEL_NEXT_TRAIN_MS = 10_000;
@@ -191,6 +195,7 @@ const PLAYER_SIT_KEY = 'scene4-player-sit-front';
 const BUS_CLOSED_KEY = 'scene4-service-50-closed';
 const BUS_OPEN_KEY = 'scene4-service-50-open';
 const FARE_READER_KEY = 'scene4-simplygo-reader';
+const FARE_CARD_DISPLAY = { width: 58, height: 38 } as const;
 // The reader is mounted to the bus fixture, so passengers walking past it
 // must render in front. Placement mode temporarily raises it above everything.
 const FARE_READER_MOUNT_DEPTH = 15;
@@ -198,37 +203,32 @@ const TRAVEL_CARD_KEY = 'scene4-fare-item-travel-card';
 const UMBRELLA_KEY = 'scene4-fare-item-umbrella';
 const WATER_BOTTLE_KEY = 'scene4-fare-item-water-bottle';
 const WALK_SPEED = 215;
-const EXTERIOR_PLAYER_SCALE = 0.3;
-const ESCALATOR_PLAYER_SCALE = 0.24;
 const ESCALATOR_RIDE_SCALE = 0.42;
-const ESCALATOR_BOARDING_X = 990;
-const ESCALATOR_BOARDING_Y = 340;
-const ESCALATOR_EXIT_X = 970;
-const ESCALATOR_EXIT_Y = 590;
+const ESCALATOR_BOARDING_X = 1540;
+const ESCALATOR_BOARDING_Y = 300;
+const ESCALATOR_EXIT_X = 1415;
+const ESCALATOR_EXIT_Y = 610;
 const PUNGGOL_GATE_EXIT_Y = 525;
 const PUNGGOL_GATE_LANE_TOLERANCE = 58;
 const PUNGGOL_GATE_POST_WIDTH = 60;
 const PUNGGOL_GATE_POST_HEIGHT = 170;
 const PUNGGOL_GATE_DOOR_WIDTH = 135;
 const PUNGGOL_GATE_DOOR_HEIGHT = 60;
-const INTERIOR_PLAYER_SCALE = 0.7;
-const BUS_SEATED_PLAYER_SCALE = 0.6;
-const BUS_SEATED_PLAYER_Y = 635;
-const RAIL_SEATED_PLAYER_SCALE = 0.5;
-const RAIL_INTERIOR_PLAYER_SCALE = 0.54;
 const EXTERIOR_BUS_WIDTH = 864;
 const EXTERIOR_BUS_HEIGHT = 333;
 // The held-item art and its hand anchors were authored against a 0.52 interior
 // character. Deriving them keeps the item in his hand at any character size.
 const INTERIOR_ART_BASE_SCALE = 0.52;
-const ITEM_SCALE = INTERIOR_PLAYER_SCALE / INTERIOR_ART_BASE_SCALE;
+const ITEM_SCALE = playerScaleFor('bus-standing') / INTERIOR_ART_BASE_SCALE;
 const CARRIED_ITEM_Y_OFFSET = 140 * ITEM_SCALE;
 const CARRIED_ITEM_X_OFFSET = 48 * ITEM_SCALE;
 // The interior camera is fixed, so how far up the aisle he may stand is bound
 // by his own height: any higher and the top of the frame crops his head.
-const INTERIOR_WALK_Y_MIN = 24 + 768 * INTERIOR_PLAYER_SCALE + 30;
+const INTERIOR_WALK_Y_MIN = 24 + PLAYER_TARGET_HEIGHT['bus-standing'] + 30;
 const INTERIOR_WALK_Y_MAX = 745;
 const BUS_INTERIOR_FLOOR_BOUNDS: WalkableFloorBounds = {
+  minX: 100,
+  maxX: 2076,
   minY: INTERIOR_WALK_Y_MIN,
   maxY: INTERIOR_WALK_Y_MAX,
 };
@@ -238,68 +238,7 @@ const RAIL_INTERIOR_OPEN_BACKGROUND_KEYS: Record<RailLegId, string> = {
   'little-india-dtl': 'scene4-dtl-train-interior-open',
 };
 
-type FareItemKind = 'travel-card' | 'umbrella' | 'water-bottle';
 type PlayerFacing = 'side' | 'front' | 'back';
-
-type InteractionContext =
-  | 'walking'
-  | 'bus-stop'
-  | 'stairs'
-  | 'bus-arriving'
-  | 'boarding'
-  | 'choose-item'
-  | 'item-selected'
-  | 'reader'
-  | 'wrong-item'
-  | 'driver-warning'
-  | 'tapping'
-  | 'fare-success'
-  | 'standing'
-  | 'seated'
-  | 'bus-moving'
-  | 'aisle'
-  | 'tap-out'
-  | 'choose-exit-item'
-  | 'exit-item-selected'
-  | 'tap-out-warning'
-  | 'last-stop-reminder'
-  | 'exit-ok'
-  | 'alighting'
-  | 'wrong-stop'
-  | 'lrt-gates'
-  | 'lrt-tapping'
-  | 'lrt-gates-open'
-  | 'lrt-stairs'
-  | 'lrt-platform'
-  | 'lrt-arriving'
-  | 'lrt-boarding'
-  | 'lrt-riding'
-  | 'nel-transfer'
-  | 'nel-wrong-direction'
-  | 'nel-arriving'
-  | 'nel-boarding'
-  | 'nel-riding'
-  | 'punggol-transfer'
-  | 'punggol-gates'
-  | 'punggol-tapping'
-  | 'punggol-gates-open'
-  | 'punggol-escalator'
-  | 'punggol-escalator-riding'
-  | 'little-india-alight'
-  | 'little-india-transfer'
-  | 'dtl-transfer'
-  | 'dtl-wrong-direction'
-  | 'dtl-arriving'
-  | 'dtl-boarding'
-  | 'dtl-riding'
-  | 'dtl-last-stop-reminder'
-  | 'rail-wrong-stop'
-  | 'out-of-time'
-  | 'expo-alight'
-  | 'expo-fare-gates'
-  | 'expo-tapping'
-  | 'expo-gates-open'
-  | 'complete';
 
 type SceneMode = 'exterior' | 'bus-interior' | 'rail' | 'rail-interior' | 'station';
 
@@ -371,7 +310,10 @@ class CommuteQuestScene extends Phaser.Scene {
     W: Phaser.Input.Keyboard.Key;
   };
   private standKey?: Phaser.Input.Keyboard.Key;
+  private interactKey?: Phaser.Input.Keyboard.Key;
+  private debugKey?: Phaser.Input.Keyboard.Key;
   private player?: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
+  private playerShadow?: Phaser.GameObjects.Ellipse;
   private background?: Phaser.GameObjects.Image;
   private bus?: Phaser.GameObjects.Image;
   private entryFareReader?: Phaser.GameObjects.Image;
@@ -442,6 +384,8 @@ class CommuteQuestScene extends Phaser.Scene {
   private escalatorMotionObjects: Phaser.GameObjects.Rectangle[] = [];
   private escalatorAnimationRuns = 0;
   private transitionStarted = false;
+  private transitionAwaitingRelease = false;
+  private transitionReleaseGuardUntil = 0;
   private railDoorsOpen = false;
   private journeyComplete = false;
   private railInteriorBackground?: Phaser.GameObjects.Image;
@@ -454,6 +398,8 @@ class CommuteQuestScene extends Phaser.Scene {
   private mrtStaffBubble?: Phaser.GameObjects.Container;
   private mrtStaffTween?: Phaser.Tweens.Tween;
   private wrongRailStopInProgress = false;
+  private wrongDirectionUntil = 0;
+  private queuedInteraction = false;
   private railHearts = 3;
   private stationFareGateObjects: Phaser.GameObjects.GameObject[] = [];
   private stationFareGateVisuals: Phaser.GameObjects.Image[] = [];
@@ -463,6 +409,11 @@ class CommuteQuestScene extends Phaser.Scene {
   private openedStationGateLaneX?: number;
   private openedStationGateEntryY?: number;
   private stationGateMessage?: Phaser.GameObjects.Text;
+  private stationPortalCue?: Phaser.GameObjects.Container;
+  private railDoorCue?: Phaser.GameObjects.Container;
+  private reducedMotion = false;
+  private debugGeometryVisible = false;
+  private debugGraphics?: Phaser.GameObjects.Graphics;
 
   constructor() {
     super('CommuteQuest');
@@ -494,19 +445,19 @@ class CommuteQuestScene extends Phaser.Scene {
     );
     this.load.image(
       PLATFORM_DOOR_KEYS['punggol-nel']!.closed,
-      '/scenes/scene4/environments/punggol-nel-platform-doors-closed.png',
+      '/scenes/scene4/environments/punggol-nel-platform-doors-closed.png?v=20260907',
     );
     this.load.image(
       PLATFORM_DOOR_KEYS['punggol-nel']!.open,
-      '/scenes/scene4/environments/punggol-nel-platform-doors-open.png',
+      '/scenes/scene4/environments/punggol-nel-platform-doors-open.png?v=20260907',
     );
     this.load.image(
       PLATFORM_DOOR_KEYS['little-india-dtl']!.closed,
-      '/scenes/scene4/environments/little-india-dtl-platform-doors-closed.png',
+      '/scenes/scene4/environments/little-india-dtl-platform-doors-closed.png?v=20260907',
     );
     this.load.image(
       PLATFORM_DOOR_KEYS['little-india-dtl']!.open,
-      '/scenes/scene4/environments/little-india-dtl-platform-doors-open.png',
+      '/scenes/scene4/environments/little-india-dtl-platform-doors-open.png?v=20260907',
     );
     Object.values(STATION_STAGES).forEach((stage) => {
       this.load.json(stage.map, `/scenes/scene4/maps/${stage.map.replace('scene4-', '').replace('-map', '')}.tmj`);
@@ -689,16 +640,20 @@ class CommuteQuestScene extends Phaser.Scene {
 
     this.player = this.physics.add
       .sprite(spawn?.x ?? 1750, spawn?.y ?? 550, PLAYER_KEY, 1)
-      .setOrigin(0.5, 1)
-      .setScale(EXTERIOR_PLAYER_SCALE)
+      .setOrigin(PLAYER_ANCHORS.walkingFeet.x, PLAYER_ANCHORS.walkingFeet.y)
+      .setScale(playerScaleFor('exterior'))
       .setCollideWorldBounds(true)
       .setDepth(20);
+
+    this.playerShadow = this.add
+      .ellipse(this.player.x, this.player.y + 2, 76, 18, 0x07131c, 0.24)
+      .setDepth(19);
 
     this.player.body.setAllowGravity(false);
     // A small footbox keeps the character solid against prop bases while
     // preserving the walkable strip directly in front of the furniture.
-    this.player.body.setSize(120, 70);
-    this.player.body.setOffset(196, 675);
+    this.player.body.setSize(110, 54);
+    this.player.body.setOffset(201, 690);
 
     this.createExteriorCollisions(exteriorMap);
 
@@ -712,6 +667,11 @@ class CommuteQuestScene extends Phaser.Scene {
     this.standKey = this.input.keyboard?.addKey(
       Phaser.Input.Keyboard.KeyCodes.SPACE,
     );
+    this.interactKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+    if (import.meta.env.DEV) {
+      this.debugKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.G);
+      this.debugGraphics = this.add.graphics().setDepth(999);
+    }
 
     this.waitZone = objectByName(exteriorMap, 'Interactions', 'Wait inside bus stop');
     this.stairZone = objectByName(exteriorMap, 'Interactions', 'Exit B stair entry');
@@ -725,6 +685,8 @@ class CommuteQuestScene extends Phaser.Scene {
     this.game.events.on('commute:board-train', this.boardTrain, this);
     this.game.events.on('commute:request-bus-stop', this.requestBusStop, this);
     this.game.events.on('commute:nudge', this.nudgePlayer, this);
+    this.game.events.on('commute:interact', this.activateNearestInteraction, this);
+    this.game.events.on('commute:reduced-motion', this.setReducedMotion, this);
     this.events.once('shutdown', () => {
       this.game.events.off('commute:raise-hand', this.startBusArrival, this);
       this.game.events.off('commute:select-item', this.selectFareItem, this);
@@ -732,6 +694,8 @@ class CommuteQuestScene extends Phaser.Scene {
       this.game.events.off('commute:board-train', this.boardTrain, this);
       this.game.events.off('commute:request-bus-stop', this.requestBusStop, this);
       this.game.events.off('commute:nudge', this.nudgePlayer, this);
+      this.game.events.off('commute:interact', this.activateNearestInteraction, this);
+      this.game.events.off('commute:reduced-motion', this.setReducedMotion, this);
     });
     this.time.delayedCall(900, this.startPassingBus, [], this);
     this.game.events.emit('commute:ready');
@@ -818,12 +782,44 @@ class CommuteQuestScene extends Phaser.Scene {
   update() {
     if (!this.player || !this.cursors || !this.movementKeys) return;
 
+    if (this.transitionAwaitingRelease) {
+      const movementKeysDown = [
+        this.cursors.left.isDown,
+        this.cursors.right.isDown,
+        this.cursors.up.isDown,
+        this.cursors.down.isDown,
+        this.movementKeys.A.isDown,
+        this.movementKeys.D.isDown,
+        this.movementKeys.W.isDown,
+        this.movementKeys.S.isDown,
+      ];
+      if (canReleaseTransitionInput(this.time.now, this.transitionReleaseGuardUntil, movementKeysDown)) {
+        this.transitionAwaitingRelease = false;
+        this.transitionStarted = false;
+        this.input.keyboard?.resetKeys();
+        this.player.setVelocity(0, 0);
+        this.inputLocked = false;
+        if (this.queuedInteraction) {
+          this.queuedInteraction = false;
+          this.activateNearestInteraction();
+        }
+      }
+    }
+
     const standRequested = Boolean(
       this.standKey && Phaser.Input.Keyboard.JustDown(this.standKey),
     );
+    if (this.interactKey && Phaser.Input.Keyboard.JustDown(this.interactKey) && !this.inputLocked) {
+      this.activateNearestInteraction();
+    }
+    if (this.debugKey && Phaser.Input.Keyboard.JustDown(this.debugKey)) {
+      this.debugGeometryVisible = !this.debugGeometryVisible;
+    }
     if (standRequested && !this.inputLocked && this.seatedSeatIndex !== undefined) {
       if (this.mode === 'bus-interior') this.standUpFromBusSeat();
       if (this.mode === 'rail-interior') this.standUpFromRailSeat();
+    } else if (standRequested && !this.inputLocked) {
+      this.sitInNearestAvailableSeat();
     }
 
     const left = this.cursors.left.isDown || this.movementKeys.A.isDown;
@@ -859,6 +855,12 @@ class CommuteQuestScene extends Phaser.Scene {
       0.12,
     );
     this.cameras.main.scrollY = 24;
+    this.playerShadow
+      ?.setPosition(this.player.x, this.player.y + 3)
+      .setDepth(Math.max(1, this.player.depth - 1))
+      .setVisible(this.player.visible)
+      .setAlpha(this.seatedSeatIndex === undefined ? 0.24 : 0.14);
+    this.updateSeatAffordances();
     this.game.canvas.dataset.scene4Debug = JSON.stringify({
       backgroundHeight: this.background?.displayHeight,
       backgroundTexture: this.background?.texture.key,
@@ -921,6 +923,7 @@ class CommuteQuestScene extends Phaser.Scene {
       mode: this.mode,
       playerVisible: this.player.visible,
       railInteriorDoorsOpen: this.railInteriorDoorsOpen,
+      reducedMotion: this.reducedMotion,
       currentRailStopIndex: this.currentRailStopIndex,
       fareGateReaders: this.stationFareGateSpecs.map((gate, index) => ({
         entry: gate.entry,
@@ -1146,11 +1149,11 @@ class CommuteQuestScene extends Phaser.Scene {
       this.fareTappedOut
         ? 'exit-ok'
         : this.fareTapped
-        ? this.busDoorsOpen
-          ? this.carriedItem
-            ? 'exit-item-selected'
-            : 'choose-exit-item'
-          : 'aisle'
+          ? this.busDoorsOpen
+          ? 'bus-stop-open'
+          : this.seatedSeatIndex !== undefined
+            ? 'bus-moving'
+            : 'aisle'
         : this.carriedItem
           ? 'item-selected'
           : 'choose-item',
@@ -1239,7 +1242,8 @@ class CommuteQuestScene extends Phaser.Scene {
     if (!this.player || this.mode !== 'exterior') return;
 
     this.mode = 'bus-interior';
-    this.inputLocked = true;
+    this.game.events.emit('commute:branch', 'bus');
+    this.beginStageTransition();
     this.player.setVelocity(0, 0).setVisible(false);
     this.cameras.main.fadeOut(220, 20, 30, 42);
 
@@ -1293,14 +1297,15 @@ class CommuteQuestScene extends Phaser.Scene {
       });
       this.fareReader = this.entryFareReader;
 
+      this.resetPlayerToWalkingPose('bus-standing');
       this.player
         ?.setPosition(spawn?.x ?? 340, spawn?.y ?? 670)
-        .setScale(INTERIOR_PLAYER_SCALE)
+        .setScale(playerScaleFor('bus-standing'))
         .setDepth(20)
         .setFlipX(false)
         .setVisible(true);
       this.cameras.main.setScroll(0, 24);
-      this.inputLocked = false;
+      this.armStageInputRelease();
       this.cameras.main.fadeIn(260, 20, 30, 42);
       this.setContext('choose-item');
     });
@@ -1308,7 +1313,7 @@ class CommuteQuestScene extends Phaser.Scene {
 
   private selectFareItem(kind: FareItemKind) {
     const choosingEntryItem = !this.fareTapped;
-    const choosingExitItem = this.fareTapped && this.busDoorsOpen && !this.fareTappedOut;
+    const choosingExitItem = this.fareTapped && this.atDestination && this.busDoorsOpen && !this.fareTappedOut;
     if (
       this.mode !== 'bus-interior' ||
       this.tapInProgress ||
@@ -1332,7 +1337,7 @@ class CommuteQuestScene extends Phaser.Scene {
       )
       .setDepth(45);
     if (kind === 'travel-card') {
-      this.carriedItemIcon.setDisplaySize(72 * ITEM_SCALE, 48 * ITEM_SCALE);
+      this.carriedItemIcon.setDisplaySize(48 * ITEM_SCALE, 32 * ITEM_SCALE);
     } else if (kind === 'umbrella') {
       this.carriedItemIcon.setDisplaySize(34 * ITEM_SCALE, 76 * ITEM_SCALE);
     } else {
@@ -1429,7 +1434,7 @@ class CommuteQuestScene extends Phaser.Scene {
 
     this.animateBusCardTap(reader, () => {
         reader.setTint(0x9dffca);
-        this.cameras.main.flash(120, 92, 255, 190, false);
+        this.cameraFlash(120, 92, 255, 190);
         this.setContext('fare-success');
 
         this.time.delayedCall(650, () => {
@@ -1451,16 +1456,38 @@ class CommuteQuestScene extends Phaser.Scene {
 
   private createBusSeats() {
     this.busSeats.forEach((seat) => seat.destroy());
-    this.busSeats = BUS_SEAT_POSITIONS.map((x, index) => {
+    const interiorMap = this.cache.json.get(INTERIOR_MAP_KEY) as Scene4MapData;
+    const authoredAnchors = interiorMap.layers.find((layer) => layer.name === 'Seats')?.objects ?? [];
+    const anchors = authoredAnchors.length > 0
+      ? authoredAnchors
+      : BUS_SEAT_FALLBACK_POSITIONS.map((x, index) => ({
+          id: index,
+          name: `Bus seat ${index + 1}`,
+          x,
+          y: 405,
+          properties: [
+            { name: 'footFloorY', value: 635 },
+            { name: 'seatBottomY', value: BUS_SEAT_FALLBACK_BOTTOM_Y },
+          ],
+        }));
+    this.busSeats = anchors.map((anchor, index) => {
+      const footFloorY = Number(propertyValue(anchor, 'footFloorY') ?? 635);
+      const seatBottomY = Number(
+        propertyValue(anchor, 'seatBottomY') ?? BUS_SEAT_FALLBACK_BOTTOM_Y,
+      );
       const seat = this.add
-        .image(x, BUS_SEAT_Y, BUS_SEAT_KEY)
+        .image(anchor.x, seatBottomY, BUS_SEAT_KEY)
         .setOrigin(0.5, 1)
-        .setDisplaySize(106, 205)
+        .setDisplaySize(96, 205)
         .setDepth(18)
         .setInteractive({ useHandCursor: true });
       seat.setData('seatIndex', index);
-      seat.on('pointerover', () => seat.setTint(0xffd7a3));
-      seat.on('pointerout', () => seat.clearTint());
+      seat.setData('playerX', anchor.x);
+      seat.setData('hipY', anchor.y);
+      seat.setData('footFloorY', footFloorY);
+      seat.setData('hovered', false);
+      seat.on('pointerover', () => seat.setData('hovered', true).setTint(0xffd7a3));
+      seat.on('pointerout', () => seat.setData('hovered', false));
       seat.on('pointerdown', () => this.sitInBusSeat(index));
       return seat;
     });
@@ -1469,6 +1496,7 @@ class CommuteQuestScene extends Phaser.Scene {
   private sitInBusSeat(index: number) {
     const seat = this.busSeats[index];
     if (!this.player || !seat || this.mode !== 'bus-interior' || this.tapInProgress) return;
+    if (this.seatedSeatIndex !== undefined || seat.getData('occupied')) return;
     if (!this.fareTapped) {
       this.showStationGateMessage('Tap in before taking a seat', seat.x, seat.y - 220);
       return;
@@ -1477,39 +1505,99 @@ class CommuteQuestScene extends Phaser.Scene {
     this.inputLocked = true;
     this.seatedSeatIndex = index;
     this.playerFacing = 'front';
+    seat.setData('occupied', true).disableInteractive().setTint(0x8f9aa3);
+    const playerX = Number(seat.getData('playerX') ?? seat.x);
+    const footFloorY = Number(seat.getData('footFloorY') ?? 635);
     this.player
       .setVelocity(0, 0)
-      .setTexture(PLAYER_SIT_KEY)
-      .setFlipX(false)
-      .setOrigin(0.5, 1)
-      .setScale(BUS_SEATED_PLAYER_SCALE)
+      .setTexture(PLAYER_KEY, 1)
+      .setFlipX(playerX < this.player.x)
+      .setOrigin(PLAYER_ANCHORS.walkingFeet.x, PLAYER_ANCHORS.walkingFeet.y)
+      .setScale(playerScaleFor('bus-standing'))
       .setCrop()
-      .setDepth(19);
-    this.player.anims.stop();
-    this.setContext('seated');
+      .setDepth(20)
+      .anims.play('scene4-player-walk-right', true);
     this.tweens.add({
       targets: this.player,
-      x: seat.x,
-      y: BUS_SEATED_PLAYER_Y,
-      duration: 420,
+      x: playerX,
+      y: 660,
+      duration: Phaser.Math.Clamp(Math.abs(playerX - this.player.x) * 1.2, 260, 620),
       ease: 'Cubic.Out',
       onComplete: () => {
         if (this.mode !== 'bus-interior') return;
-        if (this.busMoving) {
-          this.inputLocked = false;
-          this.setContext('bus-moving');
-          return;
-        }
-        this.time.delayedCall(500, this.startBusJourney, [], this);
+        this.player?.anims.stop();
+        this.player?.setTexture(PLAYER_SIT_KEY)
+          .setFlipX(false)
+          .setOrigin(PLAYER_ANCHORS.seatedFeet.x, PLAYER_ANCHORS.seatedFeet.y)
+          .setScale(playerScaleFor('bus-seated'))
+          .setDepth(19);
+        this.setContext('seated');
+        this.tweens.add({
+          targets: this.player,
+          y: footFloorY,
+          duration: 180,
+          ease: 'Sine.Out',
+          onComplete: () => {
+            if (this.mode !== 'bus-interior') return;
+            this.inputLocked = false;
+            if (this.busMoving) this.setContext('bus-moving');
+            else this.time.delayedCall(500, this.startBusJourney, [], this);
+          },
+        });
       },
     });
+    this.drawDebugGeometry();
+  }
+
+  private sitInNearestAvailableSeat() {
+    if (!this.player || this.seatedSeatIndex !== undefined) return;
+    if (this.mode === 'bus-interior') {
+      const index = this.nearestAvailableSeatIndex(this.busSeats);
+      if (index !== undefined) this.sitInBusSeat(index);
+    }
+    if (this.mode === 'rail-interior') {
+      const index = this.nearestAvailableSeatIndex(this.railSeatZones);
+      if (index !== undefined) this.sitInRailSeat(index);
+    }
+  }
+
+  private nearestAvailableSeatIndex(seats: Array<Phaser.GameObjects.Image | Phaser.GameObjects.Zone>) {
+    if (!this.player) return undefined;
+    return nearestAvailableSeatIndex(seats, this.player.x, {
+      isOccupied: (seat) => Boolean(seat.getData('occupied')),
+      playerX: (seat) => Number(seat.getData('playerX') ?? seat.x),
+    });
+  }
+
+  private updateSeatAffordances() {
+    if (!this.player || this.seatedSeatIndex !== undefined) return;
+    if (this.mode === 'bus-interior') {
+      const nearest = this.nearestAvailableSeatIndex(this.busSeats);
+      this.busSeats.forEach((seat, index) => {
+        if (!seat.getData('occupied')) {
+          if (index === nearest) seat.setTint(0xffd166);
+          else if (!seat.getData('hovered')) seat.clearTint();
+        }
+      });
+    }
+    if (this.mode === 'rail-interior') {
+      const nearest = this.nearestAvailableSeatIndex(this.railSeatZones);
+      this.railSeatZones.forEach((seat, index) => {
+        if (seat.getData('occupied')) return;
+        const highlight = seat.getData('highlight') as Phaser.GameObjects.Rectangle | undefined;
+        highlight?.setAlpha(seat.getData('hovered') ? 0.22 : index === nearest ? 0.16 : 0.07);
+      });
+    }
   }
 
   private standUpFromBusSeat() {
     if (!this.player || this.seatedSeatIndex === undefined) return;
-    const seatX = this.busSeats[this.seatedSeatIndex]?.x ?? this.player.x;
+    const seat = this.busSeats[this.seatedSeatIndex];
+    const seatX = Number(seat?.getData('playerX') ?? seat?.x ?? this.player.x);
     this.tweens.killTweensOf(this.player);
+    seat?.setData('occupied', false).clearTint().setInteractive({ useHandCursor: true });
     this.seatedSeatIndex = undefined;
+    this.inputLocked = true;
     this.player
       .setCrop()
       .setTexture(PLAYER_FRONT_KEY, 1)
@@ -1517,10 +1605,19 @@ class CommuteQuestScene extends Phaser.Scene {
       // important because the Arcade body uses a footbox offset authored for
       // origin (0.5, 1); a centred origin places the body below the world and
       // makes world-bounds correction fight movement every frame.
-      .setOrigin(0.5, 1)
-      .setScale(INTERIOR_PLAYER_SCALE)
+      .setOrigin(PLAYER_ANCHORS.walkingFeet.x, PLAYER_ANCHORS.walkingFeet.y)
+      .setScale(playerScaleFor('bus-standing'))
       .setDepth(20)
-      .setPosition(seatX, 660);
+      .setPosition(seatX, this.player.y);
+    this.tweens.add({
+      targets: this.player,
+      y: 660,
+      duration: 180,
+      ease: 'Sine.Out',
+      onComplete: () => {
+        if (this.mode === 'bus-interior') this.inputLocked = false;
+      },
+    });
   }
 
   private destroyBusSeats() {
@@ -1531,17 +1628,31 @@ class CommuteQuestScene extends Phaser.Scene {
 
   private createRailSeats() {
     this.destroyRailSeats();
-    this.railSeatZones = RAIL_SEAT_POSITIONS.map((x, index) => {
+    if (!this.railLeg) return;
+    this.railSeatZones = RAIL_SEAT_ANCHORS[this.railLeg].map((anchor, index) => {
       const highlight = this.add
-        .rectangle(x, 400, 74, 128, 0xf7b928, 0)
+        .rectangle(anchor.x, anchor.hipY, 74, 128, 0xf7b928, 0.07)
+        .setStrokeStyle(2, 0xf7b928, 0.5)
         .setDepth(18);
       this.railObjects.push(highlight);
       const seatZone = this.add
-        .zone(x, 400, 76, 140)
+        .zone(anchor.x, anchor.hipY, 76, 140)
         .setInteractive({ useHandCursor: true });
       seatZone.setData('seatIndex', index);
-      seatZone.on('pointerover', () => highlight.setAlpha(0.18));
-      seatZone.on('pointerout', () => highlight.setAlpha(0));
+      seatZone.setData('playerX', anchor.x);
+      seatZone.setData('footFloorY', anchor.footFloorY);
+      seatZone.setData('scaleProfile', anchor.scaleProfile);
+      seatZone.setData('highlight', highlight);
+      seatZone.setData('occupied', false);
+      seatZone.setData('hovered', false);
+      seatZone.on('pointerover', () => {
+        seatZone.setData('hovered', true);
+        if (!seatZone.getData('occupied')) highlight.setAlpha(0.22);
+      });
+      seatZone.on('pointerout', () => {
+        seatZone.setData('hovered', false);
+        if (!seatZone.getData('occupied')) highlight.setAlpha(0.07);
+      });
       seatZone.on('pointerdown', () => this.sitInRailSeat(index));
       return seatZone;
     });
@@ -1550,42 +1661,77 @@ class CommuteQuestScene extends Phaser.Scene {
   private sitInRailSeat(index: number) {
     const seat = this.railSeatZones[index];
     if (!this.player || !seat || this.mode !== 'rail-interior' || this.wrongRailStopInProgress) return;
+    if (this.seatedSeatIndex !== undefined || seat.getData('occupied')) return;
     this.inputLocked = true;
     this.seatedSeatIndex = index;
     this.playerFacing = 'front';
+    const highlight = seat.getData('highlight') as Phaser.GameObjects.Rectangle | undefined;
+    seat.setData('occupied', true).disableInteractive();
+    highlight?.setFillStyle(0x69737a, 0.24).setStrokeStyle(2, 0xaeb7bd, 0.8);
+    const playerX = Number(seat.getData('playerX') ?? seat.x);
+    const footFloorY = Number(seat.getData('footFloorY') ?? 560);
     this.player
       .setVelocity(0, 0)
-      .setTexture(PLAYER_SIT_KEY)
-      .setFlipX(false)
-      .setOrigin(0.5, 1)
-      .setScale(RAIL_SEATED_PLAYER_SCALE)
+      .setTexture(PLAYER_KEY, 1)
+      .setFlipX(playerX < this.player.x)
+      .setOrigin(PLAYER_ANCHORS.walkingFeet.x, PLAYER_ANCHORS.walkingFeet.y)
+      .setScale(playerScaleFor('rail-standing'))
       .setCrop()
-      .setDepth(20);
-    this.player.anims.stop();
+      .setDepth(60)
+      .anims.play('scene4-player-walk-right', true);
     this.tweens.add({
       targets: this.player,
-      x: seat.x,
-      y: RAIL_SEAT_Y,
-      duration: 360,
+      x: playerX,
+      y: 660,
+      duration: Phaser.Math.Clamp(Math.abs(playerX - this.player.x) * 1.2, 260, 620),
       ease: 'Cubic.Out',
       onComplete: () => {
-        if (this.mode === 'rail-interior') this.inputLocked = false;
+        if (this.mode !== 'rail-interior') return;
+        this.player?.anims.stop();
+        this.player?.setTexture(PLAYER_SIT_KEY)
+          .setFlipX(false)
+          .setOrigin(PLAYER_ANCHORS.seatedFeet.x, PLAYER_ANCHORS.seatedFeet.y)
+          .setScale(playerScaleFor('rail-seated'))
+          .setDepth(20);
+        this.tweens.add({
+          targets: this.player,
+          y: footFloorY,
+          duration: 180,
+          ease: 'Sine.Out',
+          onComplete: () => {
+            if (this.mode === 'rail-interior') this.inputLocked = false;
+          },
+        });
       },
     });
   }
 
   private standUpFromRailSeat() {
     if (!this.player || this.seatedSeatIndex === undefined) return;
-    const seatX = this.railSeatZones[this.seatedSeatIndex]?.x ?? this.player.x;
+    const seat = this.railSeatZones[this.seatedSeatIndex];
+    const seatX = Number(seat?.getData('playerX') ?? seat?.x ?? this.player.x);
+    const highlight = seat?.getData('highlight') as Phaser.GameObjects.Rectangle | undefined;
     this.tweens.killTweensOf(this.player);
+    seat?.setData('occupied', false).setInteractive({ useHandCursor: true });
+    highlight?.setFillStyle(0xf7b928, 0.07).setStrokeStyle(2, 0xf7b928, 0.5);
     this.seatedSeatIndex = undefined;
+    this.inputLocked = true;
     this.player
       .setCrop()
       .setTexture(PLAYER_FRONT_KEY, 1)
-      .setOrigin(0.5, 1)
-      .setScale(RAIL_INTERIOR_PLAYER_SCALE)
+      .setOrigin(PLAYER_ANCHORS.walkingFeet.x, PLAYER_ANCHORS.walkingFeet.y)
+      .setScale(playerScaleFor('rail-standing'))
       .setDepth(60)
-      .setPosition(seatX, 660);
+      .setPosition(seatX, this.player.y);
+    this.tweens.add({
+      targets: this.player,
+      y: 660,
+      duration: 180,
+      ease: 'Sine.Out',
+      onComplete: () => {
+        if (this.mode === 'rail-interior') this.inputLocked = false;
+      },
+    });
   }
 
   private destroyRailSeats() {
@@ -1602,7 +1748,7 @@ class CommuteQuestScene extends Phaser.Scene {
     this.setContext('tap-out');
     this.animateBusCardTap(reader, () => {
         reader.setTint(0x9dffca);
-        this.cameras.main.flash(120, 92, 255, 190, false);
+        this.cameraFlash(120, 92, 255, 190);
         this.setContext('exit-ok');
         this.time.delayedCall(450, () => {
           this.tapInProgress = false;
@@ -1671,7 +1817,7 @@ class CommuteQuestScene extends Phaser.Scene {
     this.game.events.emit('commute:bus-stop', 'Departing Kadaloor Stn Exit B');
     this.game.events.emit('commute:bus-stop-requested', false);
     this.game.events.emit('commute:bus-dwell', undefined);
-    this.cameras.main.shake(350, 0.0025);
+    this.cameraShake(350, 0.0025);
     this.travelToBusStop(0);
   }
 
@@ -1684,7 +1830,7 @@ class CommuteQuestScene extends Phaser.Scene {
     ) return;
     this.busStopRequested = true;
     this.game.events.emit('commute:bus-stop-requested', true);
-    this.cameras.main.flash(90, 255, 190, 80, false);
+    this.cameraFlash(90, 255, 190, 80);
   }
 
   private travelToBusStop(index: number) {
@@ -1693,7 +1839,7 @@ class CommuteQuestScene extends Phaser.Scene {
     this.setBusInteriorMoving();
     this.game.events.emit('commute:bus-dwell', undefined);
     this.game.events.emit('commute:bus-stop', `Next stop · ${BUS_ROUTE_STOPS[index]}`);
-    this.cameras.main.shake(180, 0.0012);
+    this.cameraShake(180, 0.0012);
     this.time.delayedCall(BUS_TRAVEL_BETWEEN_STOPS_MS, () => this.arriveAtBusStop(index));
   }
 
@@ -1704,7 +1850,7 @@ class CommuteQuestScene extends Phaser.Scene {
     this.busStopRequested = false;
     this.game.events.emit('commute:bus-stop-requested', false);
     this.game.events.emit('commute:bus-stop', BUS_ROUTE_STOPS[index]);
-    this.cameras.main.shake(240, 0.0018);
+    this.cameraShake(240, 0.0018);
 
     if (isDestination) {
       this.setBusInteriorDoors(true);
@@ -1740,7 +1886,7 @@ class CommuteQuestScene extends Phaser.Scene {
     this.atDestination = true;
     this.inputLocked = false;
     this.game.events.emit('commute:bus-dwell', undefined);
-    this.cameras.main.flash(180, 255, 222, 120, false);
+    this.cameraFlash(180, 255, 222, 120);
     this.fareReader = this.exitFareReader;
     this.exitFareReader?.clearTint().setVisible(true);
     this.player.setVisible(true).setVelocity(0, 0);
@@ -1871,7 +2017,7 @@ class CommuteQuestScene extends Phaser.Scene {
       if (passedThroughOpenedLane) {
         this.inputLocked = true;
         this.player.setVelocity(0, 0);
-        this.finishJourney();
+        this.enterStationStage('expo-exit-d');
       }
       return;
     }
@@ -1887,23 +2033,10 @@ class CommuteQuestScene extends Phaser.Scene {
     if (containsPoint(this.stationPortal, this.player.x, this.player.y)) {
       this.inputLocked = true;
       this.player.setVelocity(0, 0);
-      if (this.stationStage === 'kadaloor-lrt-concourse') {
-        this.enterStationStage('kadaloor-lrt-stairs');
-      } else if (this.stationStage === 'kadaloor-lrt-stairs') {
-        this.enterRailLeg('kadaloor-lrt');
-      } else if (this.stationStage === 'punggol-interchange') {
-        this.enterStationStage('punggol-nel-escalator');
-      } else if (this.stationStage === 'punggol-nel-escalator') {
-        this.enterRailLeg('punggol-nel');
-      } else if (this.stationStage === 'little-india-nel-arrival') {
-        this.enterStationStage('little-india-transfer');
-      } else if (this.stationStage === 'little-india-transfer') {
-        this.enterRailLeg('little-india-dtl');
-      } else if (this.stationStage === 'expo-dtl-arrival') {
-        this.enterStationStage('expo-fare-gates');
-      } else {
-        this.finishJourney();
-      }
+      const destination = STATION_DESTINATIONS[this.stationStage];
+      if (destination.kind === 'station') this.enterStationStage(destination.id);
+      else if (destination.kind === 'rail') this.enterRailLeg(destination.id);
+      else this.finishJourney();
     }
   }
 
@@ -1940,11 +2073,115 @@ class CommuteQuestScene extends Phaser.Scene {
     if (!this.player) return;
     const bounds = this.currentWalkableFloorBounds();
     if (!bounds) return;
-    const constrainedY = Phaser.Math.Clamp(this.player.y, bounds.minY, bounds.maxY);
+    const worldBounds = this.physics.world.bounds;
+    const constrained = clampToWalkableBounds(
+      this.player.x,
+      this.player.y,
+      bounds,
+      worldBounds.left,
+      worldBounds.right,
+    );
+    const constrainedX = constrained.x;
+    const constrainedY = constrained.y;
+    if (constrainedX !== this.player.x) {
+      this.player.x = constrainedX;
+      this.player.setVelocityX(0);
+    }
     if (constrainedY !== this.player.y) {
       this.player.y = constrainedY;
       this.player.setVelocityY(0);
     }
+  }
+
+  private beginStageTransition() {
+    this.transitionStarted = true;
+    this.transitionAwaitingRelease = false;
+    this.inputLocked = true;
+    this.player?.setVelocity(0, 0);
+  }
+
+  private resetPlayerToWalkingPose(profile: PlayerScaleProfile) {
+    this.player?.anims.stop();
+    this.player
+      ?.setTexture(PLAYER_FRONT_KEY, 1)
+      .setOrigin(PLAYER_ANCHORS.walkingFeet.x, PLAYER_ANCHORS.walkingFeet.y)
+      .setScale(playerScaleFor(profile))
+      .setFlipX(false);
+    this.playerFacing = 'front';
+  }
+
+  private armStageInputRelease(minimumGuardMs = 140) {
+    this.inputLocked = true;
+    this.transitionAwaitingRelease = true;
+    this.transitionReleaseGuardUntil = this.time.now + minimumGuardMs;
+    this.player?.setVelocity(0, 0);
+  }
+
+  private clearStationPortalCue() {
+    if (!this.stationPortalCue) return;
+    this.tweens.killTweensOf(this.stationPortalCue);
+    this.stationPortalCue.destroy(true);
+    this.stationPortalCue = undefined;
+  }
+
+  private showStationPortalCue(zone: TiledObject | undefined, label = 'GO') {
+    this.clearStationPortalCue();
+    if (!zone) return;
+    const x = zone.x + (zone.width ?? 0) / 2;
+    const y = zone.y - 24;
+    const badge = this.add.circle(0, 0, 29, 0xf7b928, 0.94).setStrokeStyle(4, 0xffffff, 0.9);
+    const text = this.add.text(0, 0, `${label} ↓`, {
+      color: '#12233f',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '15px',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.stationPortalCue = this.add.container(x, y, [badge, text]).setDepth(70);
+    this.tweens.add({
+      targets: this.stationPortalCue,
+      y: y + 9,
+      duration: 620,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.InOut',
+    });
+  }
+
+  private clearRailDoorCue() {
+    if (!this.railDoorCue) return;
+    this.tweens.killTweensOf(this.railDoorCue);
+    this.railDoorCue.destroy(true);
+    this.railDoorCue = undefined;
+  }
+
+  private showRailDoorCue(zone: TiledObject | { height: number; width: number; x: number; y: number } | undefined, label: string) {
+    this.clearRailDoorCue();
+    if (!zone) return;
+    const width = zone.width ?? 0;
+    const height = zone.height ?? 0;
+    const frame = this.add.rectangle(0, 0, width, height, 0xf7b928, 0.08)
+      .setStrokeStyle(5, 0xf7b928, 0.95);
+    const text = this.add.text(0, -height / 2 - 22, label, {
+      backgroundColor: '#12233f',
+      color: '#ffffff',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '17px',
+      fontStyle: 'bold',
+      padding: { x: 11, y: 6 },
+    }).setOrigin(0.5);
+    this.railDoorCue = this.add.container(
+      zone.x + width / 2,
+      zone.y + height / 2,
+      [frame, text],
+    ).setDepth(55);
+    this.tweens.add({ targets: frame, alpha: 0.42, duration: 500, yoyo: true, repeat: -1 });
+  }
+
+  private showPlatformBoardingCue() {
+    const boardingZone = this.railMap?.layers
+      .find((layer) => layer.name === 'Interactions')
+      ?.objects?.find((object) => propertyValue(object, 'action') === 'board');
+    this.showRailDoorCue(boardingZone, 'BOARD HERE ↑');
   }
 
   private createStationFareGates(stageId: StationStageId) {
@@ -2052,7 +2289,7 @@ class CommuteQuestScene extends Phaser.Scene {
       return;
     }
     if (!gate.entry) {
-      this.cameras.main.flash(100, 255, 70, 80, false);
+      this.cameraFlash(100, 255, 70, 80);
       this.showStationGateMessage('Use a green fare gate', gate.readerX, 335);
       return;
     }
@@ -2131,7 +2368,7 @@ class CommuteQuestScene extends Phaser.Scene {
     this.player.setVelocity(0, 0);
     this.setContext('lrt-tapping');
     const card = this.add.image(this.player.x + 35, this.player.y - 120, TRAVEL_CARD_KEY)
-      .setDisplaySize(74, 50)
+      .setDisplaySize(FARE_CARD_DISPLAY.width, FARE_CARD_DISPLAY.height)
       .setDepth(90);
     this.tweens.add({
       targets: card,
@@ -2140,7 +2377,7 @@ class CommuteQuestScene extends Phaser.Scene {
       duration: 480,
       ease: 'Sine.InOut',
       onComplete: () => {
-        this.cameras.main.flash(120, 90, 255, 180, false);
+        this.cameraFlash(120, 90, 255, 180);
         this.openSelectedStationGate(gate, index);
         this.setContext('lrt-gates-open');
         this.time.delayedCall(520, () => {
@@ -2158,7 +2395,7 @@ class CommuteQuestScene extends Phaser.Scene {
     this.player.setVelocity(0, 0).anims.stop();
     this.setContext('punggol-tapping');
     const card = this.add.image(this.player.x + 35, this.player.y - 120, TRAVEL_CARD_KEY)
-      .setDisplaySize(74, 50)
+      .setDisplaySize(FARE_CARD_DISPLAY.width, FARE_CARD_DISPLAY.height)
       .setDepth(90);
     this.tweens.add({
       targets: card,
@@ -2167,7 +2404,7 @@ class CommuteQuestScene extends Phaser.Scene {
       duration: 480,
       ease: 'Sine.InOut',
       onComplete: () => {
-        this.cameras.main.flash(120, 90, 255, 180, false);
+        this.cameraFlash(120, 90, 255, 180);
         this.openSelectedStationGate(gate, index);
         this.setContext('punggol-gates-open');
         this.time.delayedCall(520, () => {
@@ -2185,7 +2422,7 @@ class CommuteQuestScene extends Phaser.Scene {
     this.player.setVelocity(0, 0).anims.stop();
     this.setContext('expo-tapping');
     const card = this.add.image(this.player.x + 35, this.player.y - 120, TRAVEL_CARD_KEY)
-      .setDisplaySize(74, 50)
+      .setDisplaySize(FARE_CARD_DISPLAY.width, FARE_CARD_DISPLAY.height)
       .setDepth(90);
     this.tweens.add({
       targets: card,
@@ -2194,16 +2431,15 @@ class CommuteQuestScene extends Phaser.Scene {
       duration: 480,
       ease: 'Sine.InOut',
       onComplete: () => {
-        this.cameras.main.flash(120, 90, 255, 180, false);
+        this.cameraFlash(120, 90, 255, 180);
         this.openSelectedStationGate(gate, index);
         this.setContext('expo-gates-open');
         this.time.delayedCall(520, () => {
           card.destroy();
           this.expoGateTapped = true;
-          // Expo is the final destination. Once the exit reader accepts the
-          // card, the passenger has tapped out and the journey is complete.
-          // Do not make them find a second invisible completion boundary.
-          this.finishJourney();
+          // Tap-out only unlocks the exit lane. The player must physically
+          // leave Expo and complete the walk to The Signature entrance.
+          this.inputLocked = false;
         });
       },
     });
@@ -2294,9 +2530,11 @@ class CommuteQuestScene extends Phaser.Scene {
     const stage = STATION_STAGES[stageId];
     const map = this.cache.json.get(stage.map) as Scene4MapData;
     this.mode = 'station';
+    if (stageId === 'kadaloor-lrt-concourse') this.game.events.emit('commute:branch', 'lrt');
     this.stationStage = stageId;
-    this.transitionStarted = true;
-    this.inputLocked = true;
+    this.beginStageTransition();
+    this.clearStationPortalCue();
+    this.clearRailDoorCue();
     this.railLeg = undefined;
     this.railDoorsOpen = false;
     this.busMoving = false;
@@ -2353,6 +2591,18 @@ class CommuteQuestScene extends Phaser.Scene {
         this.add.image(0, 0, stage.background).setOrigin(0, 0)
           .setDisplaySize(RAIL_WORLD_WIDTH, RAIL_WORLD_HEIGHT).setDepth(0),
       );
+      if (stageId === 'punggol-nel-escalator') {
+        // Repaint only the near glass balustrade above the player. The source
+        // panorama is a single layer, so this crop supplies the missing
+        // foreground occlusion while the player crosses the upper landing.
+        this.railObjects.push(
+          this.add.image(0, 0, stage.background)
+            .setOrigin(0, 0)
+            .setDisplaySize(RAIL_WORLD_WIDTH, RAIL_WORLD_HEIGHT)
+            .setCrop(0, 250, 1120, 215)
+            .setDepth(61),
+        );
+      }
       const spawnName = stageId === 'punggol-interchange'
         ? this.lrtGateTapped ? 'from-lrt' : 'from-bus'
         : 'player-start';
@@ -2362,17 +2612,23 @@ class CommuteQuestScene extends Phaser.Scene {
         this.escalatorRideStarted = false;
         this.escalatorRideComplete = false;
       }
+      this.resetPlayerToWalkingPose(stageId === 'punggol-nel-escalator' ? 'escalator' : 'station');
       this.player?.setPosition(spawn?.x ?? stage.spawnX, spawn?.y ?? 660)
-        .setScale(stageId === 'punggol-nel-escalator' ? ESCALATOR_PLAYER_SCALE : 0.42)
+        .setScale(playerScaleFor(stageId === 'punggol-nel-escalator' ? 'escalator' : 'station'))
         .setDepth(60).setFlipX(false).setVisible(true).setVelocity(0, 0);
       this.createStationFareGates(stageId);
+      this.createOfficeWayfinding(stageId);
+      const routeCue = stageId === 'punggol-nel-escalator'
+        ? objectByName(map, 'Interactions', 'Escalator entry')
+        : this.stationPortal;
+      this.showStationPortalCue(routeCue, stageId === 'punggol-nel-escalator' ? 'DOWN' : 'GO');
 
       this.setContext(
         stageId === 'punggol-interchange' && this.lrtGateTapped
           ? 'punggol-transfer'
           : stage.context,
       );
-      this.inputLocked = false;
+      this.armStageInputRelease();
       this.cameras.main.fadeIn(220, 18, 27, 42);
     });
   }
@@ -2393,8 +2649,10 @@ class CommuteQuestScene extends Phaser.Scene {
         this.chooseDirection(String(propertyValue(selectedZone, 'direction') ?? ''));
         return;
       }
-      if (this.lastContext === 'nel-wrong-direction') this.setContext('nel-transfer');
-      if (this.lastContext === 'dtl-wrong-direction') this.setContext('dtl-transfer');
+      if (this.time.now >= this.wrongDirectionUntil) {
+        if (this.lastContext === 'nel-wrong-direction') this.setContext('nel-transfer');
+        if (this.lastContext === 'dtl-wrong-direction') this.setContext('dtl-transfer');
+      }
     }
 
     if (!this.railDoorsOpen) return;
@@ -2425,10 +2683,16 @@ class CommuteQuestScene extends Phaser.Scene {
     this.railStopAdvanceTimer?.remove(false);
     this.railStopAdvanceTimer = undefined;
     this.wrongRailStopInProgress = false;
-    this.inputLocked = true;
+    this.beginStageTransition();
+    this.clearStationPortalCue();
+    this.clearRailDoorCue();
     this.busMoving = false;
     this.background?.setVisible(false);
     this.bus?.setVisible(false);
+    this.exteriorObjects.forEach((object) => object.destroy());
+    this.exteriorObjects = [];
+    this.collisionBodies.forEach((object) => object.destroy());
+    this.collisionBodies = [];
     this.destroyFareReaders();
     this.destroyBusSeats();
     this.driverBubble?.destroy();
@@ -2467,9 +2731,10 @@ class CommuteQuestScene extends Phaser.Scene {
       this.physics.world.setBounds(cameraFrame?.x ?? 0, cameraFrame?.y ?? 0, railWidth, railHeight);
       this.cameras.main.setBounds(cameraFrame?.x ?? 0, cameraFrame?.y ?? 0, railWidth, railHeight).setScroll(0, 0);
       this.drawRailPlatform(legId, railMap);
+      this.resetPlayerToWalkingPose('station');
       this.player
         ?.setPosition(playerSpawn?.x ?? 220, playerSpawn?.y ?? 660)
-        .setScale(0.42)
+        .setScale(playerScaleFor('station'))
         .setDepth(60)
         .setFlipX(false)
         .setVisible(true)
@@ -2478,10 +2743,11 @@ class CommuteQuestScene extends Phaser.Scene {
 
       if (legId === 'kadaloor-lrt') {
         this.setContext('lrt-platform');
+        this.armStageInputRelease();
         this.time.delayedCall(350, this.arriveRailTrain, [], this);
       } else {
         this.setContext(legId === 'punggol-nel' ? 'nel-transfer' : 'dtl-transfer');
-        this.inputLocked = false;
+        this.armStageInputRelease();
         if (legId === 'punggol-nel') this.startLiveNelService();
         if (legId === 'little-india-dtl') this.startLiveDtlService();
       }
@@ -2518,6 +2784,19 @@ class CommuteQuestScene extends Phaser.Scene {
           .setDepth(30),
       );
     }
+
+    const commuterPositions = isLrt ? [970, 1210] : [880, 1280];
+    commuterPositions.forEach((x, index) => {
+      add(
+        this.add.image(x, 545 + index * 8, MRT_STAFF_KEY)
+          .setOrigin(0.5, 1)
+          .setScale(isLrt ? 0.14 : 0.13)
+          .setFlipX(index % 2 === 1)
+          .setTint(index === 0 ? 0xb7c6d3 : 0xd8c4ad)
+          .setAlpha(0.72)
+          .setDepth(35),
+      );
+    });
 
     if (legId === 'punggol-nel') {
       // Use the two electronic panels already built into the station artwork.
@@ -2684,6 +2963,7 @@ class CommuteQuestScene extends Phaser.Scene {
       'Platform direction choice',
     );
     if (propertyValue(directionChoice, 'correctDirection') !== choice) {
+      this.wrongDirectionUntil = this.time.now + 1600;
       this.setContext(
         this.railLeg === 'punggol-nel'
           ? 'nel-wrong-direction'
@@ -2796,6 +3076,116 @@ class CommuteQuestScene extends Phaser.Scene {
     });
   }
 
+  public debugEnterStationStage(stageId: StationStageId) {
+    if (!import.meta.env.DEV || !STATION_STAGES[stageId]) return;
+    this.enterStationStage(stageId);
+  }
+
+  public debugFinishJourney() {
+    if (!import.meta.env.DEV) return;
+    this.finishJourney();
+  }
+
+  public debugEnterBusInterior() {
+    if (!import.meta.env.DEV) return;
+    this.enterBusInterior();
+  }
+
+  public debugEnterBusSeated() {
+    if (!import.meta.env.DEV) return;
+    this.enterBusInterior();
+    this.time.delayedCall(360, () => {
+      this.fareTapped = true;
+      this.sitInBusSeat(0);
+    });
+  }
+
+  public debugEnterRailSeated(legId: RailLegId) {
+    if (!import.meta.env.DEV) return;
+    this.railLeg = legId;
+    this.enterRailTrainInterior(legId);
+    this.time.delayedCall(360, () => this.sitInRailSeat(0));
+  }
+
+  public debugEnterRailPlatform(legId: RailLegId) {
+    if (!import.meta.env.DEV) return;
+    this.enterRailLeg(legId);
+    if (legId === 'kadaloor-lrt') return;
+    this.time.delayedCall(360, () => {
+      this.selectedRailDirection = legId === 'punggol-nel' ? 'HarbourFront' : 'Expo';
+      this.stopNelServiceClock();
+      this.stopDtlServiceClock();
+      if (legId === 'punggol-nel') this.arriveLiveHarbourFrontTrain();
+      else this.arriveLiveDtlExpoTrain();
+    });
+  }
+
+  private createOfficeWayfinding(stageId: StationStageId) {
+    if (stageId === 'expo-exit-d') {
+      [
+        { x: 510, y: 245, width: 510, title: 'EXIT D  →', subtitle: 'CHANGI BUSINESS PARK' },
+        { x: 1570, y: 300, width: 480, title: 'THE SIGNATURE  →', subtitle: '51 CHANGI BUSINESS PARK CENTRAL 2' },
+      ].forEach(({ x, y, width, title, subtitle }) => {
+        const sign = this.add.container(x, y).setDepth(20);
+        sign.add([
+          this.add.rectangle(0, 0, width, 92, 0x102f3c, 0.94)
+            .setStrokeStyle(3, 0xffffff, 0.85),
+          this.add.text(0, -13, title, {
+            color: '#ffffff',
+            fontFamily: 'Arial, sans-serif',
+            fontSize: '30px',
+            fontStyle: 'bold',
+          }).setOrigin(0.5),
+          this.add.text(0, 24, subtitle, {
+            color: '#bce8eb',
+            fontFamily: 'Arial, sans-serif',
+            fontSize: '14px',
+            fontStyle: 'bold',
+          }).setOrigin(0.5),
+        ]);
+        this.railObjects.push(sign);
+      });
+      return;
+    }
+
+    if (stageId === 'the-signature-exterior') {
+      const entranceGlow = this.add.ellipse(1900, 555, 410, 250, 0xf7b928, 0.1).setDepth(5);
+      this.railObjects.push(entranceGlow);
+      if (!this.reducedMotion) {
+        this.tweens.add({
+          targets: entranceGlow,
+          alpha: 0.24,
+          scaleX: 1.06,
+          scaleY: 1.06,
+          duration: 900,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.InOut',
+        });
+      }
+      const sign = this.add.container(1600, 318).setDepth(20);
+      sign.add([
+        this.add.rectangle(0, 0, 420, 90, 0x102f3c, 0.9)
+          .setStrokeStyle(3, 0xffffff, 0.85),
+        this.add.text(0, -12, 'THE SIGNATURE', {
+          color: '#ffffff',
+          fontFamily: 'Arial, sans-serif',
+          fontSize: '31px',
+          fontStyle: 'bold',
+        }).setOrigin(0.5),
+        this.add.text(0, 23, '51 CHANGI BUSINESS PARK CENTRAL 2', {
+          color: '#bce8eb',
+          fontFamily: 'Arial, sans-serif',
+          fontSize: '14px',
+          fontStyle: 'bold',
+        }).setOrigin(0.5),
+      ]);
+      this.railObjects.push(sign);
+      return;
+    }
+
+  }
+
   private departLiveHarbourFrontTrain(departingTrain: Phaser.GameObjects.Image) {
     if (
       this.railLeg !== 'punggol-nel' ||
@@ -2890,6 +3280,7 @@ class CommuteQuestScene extends Phaser.Scene {
       this.setPlatformDoors(true);
       this.railDoorsOpen = true;
       this.inputLocked = false;
+      this.showPlatformBoardingCue();
       this.setContext('nel-boarding');
     });
   }
@@ -3037,6 +3428,7 @@ class CommuteQuestScene extends Phaser.Scene {
     ) return;
     this.railDoorsOpen = true;
     this.inputLocked = false;
+    this.showPlatformBoardingCue();
     this.setContext('dtl-boarding');
   }
 
@@ -3097,6 +3489,7 @@ class CommuteQuestScene extends Phaser.Scene {
           this.inputLocked = false;
           train.setTexture(TRAIN_OPEN_KEYS[this.railLeg!]);
           this.setPlatformDoors(true);
+          this.showPlatformBoardingCue();
           this.setContext(
             isLrt ? 'lrt-boarding' : this.railLeg === 'punggol-nel' ? 'nel-boarding' : 'dtl-boarding',
           );
@@ -3108,6 +3501,7 @@ class CommuteQuestScene extends Phaser.Scene {
   private boardTrain() {
     if (!this.railLeg || !this.train || !this.railDoorsOpen || this.journeyComplete) return;
     const currentLeg = this.railLeg;
+    this.clearRailDoorCue();
     if (currentLeg === 'punggol-nel') {
       this.nelHarbourFrontDepartureTimer?.remove(false);
       this.nelHarbourFrontDepartureTimer = undefined;
@@ -3139,7 +3533,7 @@ class CommuteQuestScene extends Phaser.Scene {
               ? 'nel-riding'
               : 'dtl-riding',
         );
-        this.cameras.main.shake(260, 0.002);
+        this.cameraShake(260, 0.002);
       },
     });
     this.time.delayedCall(250, () => {
@@ -3176,7 +3570,14 @@ class CommuteQuestScene extends Phaser.Scene {
     this.nelPunggolCoastBoardText = undefined;
     this.dtlExpoBoardText = undefined;
     this.dtlBukitPanjangBoardText = undefined;
-    this.inputLocked = true;
+    this.beginStageTransition();
+    this.clearRailDoorCue();
+    this.background?.setVisible(false);
+    this.bus?.setVisible(false);
+    this.exteriorObjects.forEach((object) => object.destroy());
+    this.exteriorObjects = [];
+    this.collisionBodies.forEach((object) => object.destroy());
+    this.collisionBodies = [];
     this.train?.destroy();
     this.train = undefined;
     this.oppositeTrain?.destroy();
@@ -3203,13 +3604,14 @@ class CommuteQuestScene extends Phaser.Scene {
 
       this.createRailSeats();
 
+      this.resetPlayerToWalkingPose('rail-standing');
       this.player?.setPosition(500, 682)
-        .setScale(RAIL_INTERIOR_PLAYER_SCALE)
+        .setScale(playerScaleFor('rail-standing'))
         .setDepth(60)
         .setFlipX(false)
         .setVisible(true)
         .setVelocity(0, 0);
-      this.inputLocked = false;
+      this.armStageInputRelease();
       this.setContext(
         legId === 'kadaloor-lrt'
           ? 'lrt-riding'
@@ -3252,7 +3654,7 @@ class CommuteQuestScene extends Phaser.Scene {
       this.railLeg !== legId ||
       (this.mode !== 'rail' && this.mode !== 'rail-interior')
     ) return;
-    const stops = RAIL_STOP_FACTS[legId];
+    const stops = RAIL_PLAYABLE_STOP_FACTS[legId];
     if (index < 0 || index >= stops.length) {
       return;
     }
@@ -3264,13 +3666,20 @@ class CommuteQuestScene extends Phaser.Scene {
     this.game.events.emit('commute:rail-stop', {
       ...stops[index],
       index: index + 1,
+      nextStation: stops[index + 1]?.station,
+      targetIsNext: stops[index + 1]?.station === SCENE4_ROUTE.find((candidate) => candidate.id === legId)?.alightAt,
       legId,
       total: stops.length,
     } satisfies ActiveRailStop);
-    this.cameras.main.shake(140, 0.0012);
-    this.cameras.main.flash(90, 120, 190, 220, false);
+    this.cameraShake(140, 0.0012);
+    this.cameraFlash(90, 120, 190, 220);
 
     const leg = SCENE4_ROUTE.find((candidate) => candidate.id === legId);
+    if (stops[index].station === leg?.alightAt) {
+      this.showRailDoorCue(RAIL_EXIT_ZONES[0], `EXIT FOR ${stops[index].station.toUpperCase()} ↑`);
+    } else {
+      this.clearRailDoorCue();
+    }
     const isDtl = legId === 'little-india-dtl';
     const isExpoTerminal = isDtl && stops[index].station === 'Expo';
     if (isExpoTerminal) {
@@ -3293,9 +3702,10 @@ class CommuteQuestScene extends Phaser.Scene {
       if (this.railLeg !== legId || this.mode !== 'rail-interior') return;
       this.railInteriorDoorsOpen = false;
       this.setRailInteriorDoorVisualState(false);
+      this.clearRailDoorCue();
       this.game.events.emit('commute:rail-interior-doors', false);
       this.game.events.emit('commute:rail-stop', undefined);
-      this.cameras.main.shake(120, 0.001);
+      this.cameraShake(120, 0.001);
       this.railStopAdvanceTimer = this.time.delayedCall(
         RAIL_BETWEEN_STOPS_MS,
         () => this.playRailStopSequence(
@@ -3313,7 +3723,7 @@ class CommuteQuestScene extends Phaser.Scene {
       this.railLeg !== 'little-india-dtl' ||
       this.mode !== 'rail-interior' ||
       !this.railInteriorDoorsOpen ||
-      RAIL_STOP_FACTS['little-india-dtl'][this.currentRailStopIndex]?.station !== 'Expo'
+      RAIL_PLAYABLE_STOP_FACTS['little-india-dtl'][this.currentRailStopIndex]?.station !== 'Expo'
     ) return;
 
     this.setContext('dtl-last-stop-reminder');
@@ -3392,12 +3802,9 @@ class CommuteQuestScene extends Phaser.Scene {
   }
 
   private nextRailStopIndex(index: number, total: number) {
-    let nextIndex = index + this.railTravelDirection;
-    if (nextIndex < 0 || nextIndex >= total) {
-      this.railTravelDirection = this.railTravelDirection === 1 ? -1 : 1;
-      nextIndex = index + this.railTravelDirection;
-    }
-    return nextIndex;
+    const next = nextBouncingStopIndex(index, total, this.railTravelDirection);
+    this.railTravelDirection = next.direction;
+    return next.index;
   }
 
   private alightAtCurrentRailStop() {
@@ -3410,7 +3817,7 @@ class CommuteQuestScene extends Phaser.Scene {
     ) return;
 
     const legId = this.railLeg;
-    const stops = RAIL_STOP_FACTS[legId];
+    const stops = RAIL_PLAYABLE_STOP_FACTS[legId];
     const stop = stops[this.currentRailStopIndex];
     if (!stop) return;
     const leg = SCENE4_ROUTE.find((candidate) => candidate.id === legId);
@@ -3444,10 +3851,10 @@ class CommuteQuestScene extends Phaser.Scene {
       return;
     }
     this.setContext('rail-wrong-stop');
-    this.railStopAdvanceTimer = this.time.delayedCall(1200, () => {
+    this.railStopAdvanceTimer = this.time.delayedCall(2200, () => {
       if (this.railLeg !== legId || this.mode !== 'rail-interior') return;
       this.wrongRailStopInProgress = false;
-      this.inputLocked = false;
+      this.armStageInputRelease();
       this.setContext(
         legId === 'kadaloor-lrt'
           ? 'lrt-riding'
@@ -3459,7 +3866,7 @@ class CommuteQuestScene extends Phaser.Scene {
       // Move them just clear of the exit trigger so the next stop does not
       // automatically count as another alight attempt.
       this.player?.setPosition(this.player.x, 680).setVelocity(0, 0);
-      this.cameras.main.shake(120, 0.001);
+      this.cameraShake(120, 0.001);
       this.railStopAdvanceTimer = this.time.delayedCall(
         RAIL_BETWEEN_STOPS_MS,
         () => this.playRailStopSequence(
@@ -3482,33 +3889,44 @@ class CommuteQuestScene extends Phaser.Scene {
   private finishJourney() {
     if (this.journeyComplete) return;
     this.journeyComplete = true;
+    this.inputLocked = true;
+    this.player?.setVelocity(0, 0).anims.stop();
+    this.player?.setTexture(PLAYER_FRONT_KEY, 1).setFlipX(false);
     this.clearDtlTerminalStaff();
     this.train?.destroy();
     this.train = undefined;
     this.oppositeTrain?.destroy();
     this.oppositeTrain = undefined;
     this.destroyRailSeats();
-    this.railObjects.forEach((object) => object.destroy());
-    this.railObjects = [];
-    this.railInteriorBackground = undefined;
-    this.add.rectangle(640, 360, 1280, 720, 0x0f3b4a).setDepth(100);
-    this.add.text(640, 260, 'ARRIVED', {
+    this.add.rectangle(640, 360, 1280, 720, 0x071b24, 0.3)
+      .setDepth(100)
+      .setScrollFactor(0);
+    this.add.rectangle(640, 330, 780, 310, 0x0f3b4a, 0.96)
+      .setStrokeStyle(4, 0xf7b928, 0.95)
+      .setDepth(101)
+      .setScrollFactor(0);
+    this.add.text(640, 230, 'ARRIVED AT THE ENTRANCE', {
       color: '#f7b928',
       fontFamily: 'Arial, sans-serif',
-      fontSize: '30px',
+      fontSize: '24px',
       fontStyle: 'bold',
-    }).setOrigin(0.5).setDepth(101);
-    this.add.text(640, 340, 'Expo · Changi Business Park', {
+    }).setOrigin(0.5).setDepth(102).setScrollFactor(0);
+    this.add.text(640, 305, 'TCS · The Signature', {
       color: '#ffffff',
       fontFamily: 'Arial, sans-serif',
       fontSize: '42px',
       fontStyle: 'bold',
-    }).setOrigin(0.5).setDepth(101);
-    this.add.text(640, 415, 'Journey complete — route chosen independently', {
+    }).setOrigin(0.5).setDepth(102).setScrollFactor(0);
+    this.add.text(640, 365, '51 Changi Business Park Central 2', {
       color: '#c9e2e5',
       fontFamily: 'Arial, sans-serif',
       fontSize: '20px',
-    }).setOrigin(0.5).setDepth(101);
+    }).setOrigin(0.5).setDepth(102).setScrollFactor(0);
+    this.add.text(640, 415, 'Journey complete · arrived at The Signature entrance', {
+      color: '#c9e2e5',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '20px',
+    }).setOrigin(0.5).setDepth(102).setScrollFactor(0);
     this.setContext('complete');
     this.game.events.emit('commute:complete');
   }
@@ -3532,6 +3950,102 @@ class CommuteQuestScene extends Phaser.Scene {
       this.playerFacing = 'side';
       this.player.setFlipX(direction === 'left').setTexture(PLAYER_KEY, 1);
     }
+  }
+
+  private activateNearestInteraction() {
+    if (!this.player) return;
+    if (this.inputLocked) {
+      if (this.transitionAwaitingRelease) this.queuedInteraction = true;
+      return;
+    }
+    if (this.mode === 'bus-interior') {
+      if (this.seatedSeatIndex !== undefined) {
+        this.standUpFromBusSeat();
+        return;
+      }
+      const reader = this.fareTapped && this.atDestination ? this.exitFareReader : this.entryFareReader;
+      if (reader && Math.abs(this.player.x - reader.x) <= 220) {
+        this.handleBusFareReaderClick(reader);
+        return;
+      }
+      if (this.fareTapped && !this.busDoorsOpen) this.sitInNearestAvailableSeat();
+      else if (reader) this.showStationGateMessage('Walk beside the reader, then press E', reader.x, reader.y - 35);
+      return;
+    }
+    if (this.mode === 'rail-interior') {
+      if (this.seatedSeatIndex !== undefined) this.standUpFromRailSeat();
+      else this.sitInNearestAvailableSeat();
+      return;
+    }
+    if (this.mode === 'station' && this.stationStage && this.stationFareGateSpecs.length > 0) {
+      let nearestIndex = 0;
+      this.stationFareGateSpecs.forEach((gate, index) => {
+        const current = this.stationFareGateSpecs[nearestIndex];
+        if (Math.abs(gate.readerX - this.player!.x) < Math.abs(current.readerX - this.player!.x)) {
+          nearestIndex = index;
+        }
+      });
+      this.selectStationFareGate(this.stationStage, this.stationFareGateSpecs[nearestIndex], nearestIndex);
+      return;
+    }
+    if (this.mode === 'rail' && this.railDoorsOpen) this.boardTrain();
+  }
+
+  private setReducedMotion(reduced: boolean) {
+    this.reducedMotion = reduced;
+  }
+
+  private cameraShake(duration: number, intensity: number) {
+    if (!this.reducedMotion) this.cameras.main.shake(duration, intensity);
+  }
+
+  private cameraFlash(duration: number, red: number, green: number, blue: number) {
+    if (!this.reducedMotion) this.cameras.main.flash(duration, red, green, blue, false);
+  }
+
+  private drawDebugGeometry() {
+    const graphics = this.debugGraphics;
+    if (!graphics) return;
+    graphics.clear();
+    if (!this.debugGeometryVisible || !this.player) return;
+
+    const floor = this.currentWalkableFloorBounds();
+    if (floor) {
+      const minX = floor.minX ?? 0;
+      const maxX = floor.maxX ?? this.worldWidth;
+      graphics.lineStyle(3, 0x41f5a6, 0.9);
+      graphics.strokeRect(minX, floor.minY, maxX - minX, floor.maxY - floor.minY);
+    }
+    graphics.lineStyle(3, 0xff4c74, 1);
+    graphics.strokeRect(this.player.body.x, this.player.body.y, this.player.body.width, this.player.body.height);
+    graphics.fillStyle(0xff4c74, 1);
+    graphics.fillCircle(this.player.x, this.player.y, 6);
+
+    if (this.stationPortal) {
+      graphics.lineStyle(4, 0xf7b928, 0.95);
+      graphics.strokeRect(
+        this.stationPortal.x,
+        this.stationPortal.y,
+        this.stationPortal.width ?? 0,
+        this.stationPortal.height ?? 0,
+      );
+    }
+    graphics.lineStyle(3, 0x4cc9ff, 0.9);
+    this.railSeatZones.forEach((seat) => graphics.strokeRect(
+      seat.x - seat.displayWidth / 2,
+      seat.y - seat.displayHeight / 2,
+      seat.displayWidth,
+      seat.displayHeight,
+    ));
+    RAIL_EXIT_ZONES.forEach((zone) => graphics.strokeRect(zone.x, zone.y, zone.width, zone.height));
+
+    const masks = this.railLeg === 'punggol-nel'
+      ? [...PUNGGOL_NEL_TRACK_MASKS.harbourFront, ...PUNGGOL_NEL_TRACK_MASKS.punggolCoast]
+      : this.railLeg === 'little-india-dtl'
+        ? [...LITTLE_INDIA_DTL_TRACK_MASKS.expo, ...LITTLE_INDIA_DTL_TRACK_MASKS.bukitPanjang]
+        : [];
+    graphics.lineStyle(3, 0xbf70ff, 0.9);
+    masks.forEach((mask) => graphics.strokeRect(mask.x, mask.y, mask.width, mask.height));
   }
 
   private createExteriorCollisions(map: Scene4MapData) {
@@ -3659,95 +4173,13 @@ export interface CommuteGameProps {
   onDone: () => void;
 }
 
-const CONTEXT_COPY: Record<InteractionContext, string> = {
-  walking: 'Choose Bus 50 or walk into Exit B for the LRT',
-  'bus-stop': 'Wait inside bus stop 65321',
-  stairs: 'Entering Kadaloor LRT station',
-  'bus-arriving': 'Service 50 is approaching',
-  boarding: 'Walk to the open front door',
-  'choose-item': 'Choose an item from your bag',
-  'item-selected': 'Walk beside a fare reader and click it to tap in',
-  reader: 'Walk to the SimplyGo reader',
-  'wrong-item': 'That cannot pay your fare — choose the travel card',
-  'driver-warning': 'Driver: “Eh boy, tap in lah!”',
-  tapping: 'Card tapped on the reader…',
-  'fare-success': 'ENTRY OK — card accepted',
-  standing: 'Hold on — Service 50 is departing',
-  seated: 'Seated safely — Service 50 is departing',
-  'bus-moving': 'Service 50 is travelling · press Space to stand up',
-  aisle: 'Bus departing — click an empty red seat if you want to sit',
-  'tap-out': 'Doors open — click either fare reader to tap out',
-  'choose-exit-item': 'Open your backpack and choose the travel card to tap out',
-  'exit-item-selected': 'Walk beside the exit reader and click it to tap out',
-  'tap-out-warning': 'Tap out before leaving the bus',
-  'last-stop-reminder': 'Last stop: Punggol Interchange — tap out and alight',
-  'exit-ok': 'EXIT OK — walk through the rear doors',
-  alighting: 'Alighting at Punggol interchange',
-  'wrong-stop': 'Got down at the wrong station — returning to Kadaloor',
-  'lrt-gates': 'Walk beside a green fare gate and click its TAP reader',
-  'lrt-tapping': 'Tapping into Kadaloor LRT…',
-  'lrt-gates-open': 'ENTRY OK — walk through the opened gate to the stairs',
-  'lrt-stairs': 'Take the stairs up to the LRT platform',
-  'lrt-platform': 'Refer to the MRT map and station signs to choose your LRT',
-  'lrt-arriving': 'A Punggol LRT train is approaching',
-  'lrt-boarding': 'Doors open — board when ready',
-  'lrt-riding': 'Click a seat to sit · walk to a door when you want to alight',
-  'nel-transfer': 'Refer to the MRT map and station signs to choose a platform',
-  'nel-wrong-direction': 'This platform travels towards Punggol Coast',
-  'nel-arriving': 'A train is approaching — check the platform display',
-  'nel-boarding': 'Doors open — board when ready',
-  'nel-riding': 'Click a seat to sit · walk to a door when you want to alight',
-  'punggol-transfer': 'Walk through Punggol interchange to the NEL',
-  'punggol-gates': 'Punggol NE17 — stand beside a green gate and click TAP',
-  'punggol-tapping': 'Tapping into the North East Line…',
-  'punggol-gates-open': 'ENTRY OK — step into the opened lane, then walk forward',
-  'punggol-escalator': 'Cross the concourse and take the short escalator down',
-  'punggol-escalator-riding': 'Descending to the North East Line platform…',
-  'little-india-alight': 'Use the station signs to continue your journey',
-  'little-india-transfer': 'Follow the paid-area signs and choose your route',
-  'dtl-transfer': 'Refer to the MRT map and station signs to choose a platform',
-  'dtl-wrong-direction': 'Bukit Panjang is the wrong direction — try again',
-  'dtl-arriving': 'Downtown Line train is approaching',
-  'dtl-boarding': 'Doors open — board when ready',
-  'dtl-riding': 'Click a seat to sit · walk to a door when you want to alight',
-  'dtl-last-stop-reminder': 'Expo is the last stop — walk through the open train door',
-  'rail-wrong-stop': 'Wrong station — returning to the train at this stop',
-  'out-of-time': 'Journey ended — too much travel time was lost',
-  'expo-alight': 'Use the station signs to find the exit',
-  'expo-fare-gates': 'Walk beside an OUT reader and tap your travel card',
-  'expo-tapping': 'Tapping out at Expo…',
-  'expo-gates-open': 'EXIT OK — fare accepted',
-  complete: 'Arrived at Changi Business Park',
-};
-
-const BAG_ITEMS: Array<{
-  image: string;
-  kind: FareItemKind;
-  label: string;
-}> = [
-  {
-    image: '/scenes/scene4/props/fare-item-umbrella.png',
-    kind: 'umbrella',
-    label: 'Umbrella',
-  },
-  {
-    image: '/scenes/scene4/props/fare-item-travel-card.png',
-    kind: 'travel-card',
-    label: 'Travel card',
-  },
-  {
-    image: '/scenes/scene4/props/fare-item-water-bottle.png',
-    kind: 'water-bottle',
-    label: 'Bottle',
-  },
-];
-
 export function CommuteGame({
   completionXp,
   onSessionComplete,
   onDone,
 }: CommuteGameProps) {
   const parentRef = useRef<HTMLDivElement>(null);
+  const mapCloseRef = useRef<HTMLButtonElement>(null);
   const gameRef = useRef<Phaser.Game | null>(null);
   const completionHandledRef = useRef(false);
   const onSessionCompleteRef = useRef(onSessionComplete);
@@ -3764,6 +4196,7 @@ export function CommuteGame({
   const [wrongRailStop, setWrongRailStop] = useState<WrongRailStop>();
   const [busTaskPopupVisible, setBusTaskPopupVisible] = useState(false);
   const [mrtMapOpen, setMrtMapOpen] = useState(false);
+  const [journeyBranch, setJourneyBranch] = useState<'bus' | 'lrt'>();
 
   useEffect(() => {
     const repeatsUntilActionIsComplete =
@@ -3794,8 +4227,12 @@ export function CommuteGame({
 
   useEffect(() => {
     if (!gameRef.current) return;
-    if (mrtMapOpen) gameRef.current.scene.pause('CommuteQuest');
-    else gameRef.current.scene.resume('CommuteQuest');
+    if (mrtMapOpen) {
+      gameRef.current.scene.pause('CommuteQuest');
+      window.setTimeout(() => mapCloseRef.current?.focus(), 0);
+    } else {
+      gameRef.current.scene.resume('CommuteQuest');
+    }
   }, [mrtMapOpen]);
 
   useEffect(() => {
@@ -3862,6 +4299,7 @@ export function CommuteGame({
     const handleFareItemStored = () => {
       setSelectedItem(undefined);
     };
+    const handleBranch = (branch: 'bus' | 'lrt') => setJourneyBranch(branch);
     const handleJourneyReset = () => {
       setContext('walking');
       setRaisedHand(false);
@@ -3874,6 +4312,11 @@ export function CommuteGame({
       setRailInteriorDoorsOpen(false);
       setRailHearts(3);
       setWrongRailStop(undefined);
+      setJourneyBranch(undefined);
+    };
+    const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const syncReducedMotion = () => {
+      game.events.emit('commute:reduced-motion', reducedMotionQuery.matches);
     };
     game.events.on('commute:context', handleContext);
     game.events.on('commute:complete', handleComplete);
@@ -3885,7 +4328,10 @@ export function CommuteGame({
     game.events.on('commute:rail-interior-doors', handleRailInteriorDoors);
     game.events.on('commute:lose-heart', handleLoseHeart);
     game.events.on('commute:fare-item-stored', handleFareItemStored);
+    game.events.on('commute:branch', handleBranch);
     game.events.on('commute:journey-reset', handleJourneyReset);
+    game.events.on('commute:ready', syncReducedMotion);
+    reducedMotionQuery.addEventListener('change', syncReducedMotion);
     gameRef.current = game;
 
     return () => {
@@ -3899,7 +4345,10 @@ export function CommuteGame({
       game.events.off('commute:rail-interior-doors', handleRailInteriorDoors);
       game.events.off('commute:lose-heart', handleLoseHeart);
       game.events.off('commute:fare-item-stored', handleFareItemStored);
+      game.events.off('commute:branch', handleBranch);
       game.events.off('commute:journey-reset', handleJourneyReset);
+      game.events.off('commute:ready', syncReducedMotion);
+      reducedMotionQuery.removeEventListener('change', syncReducedMotion);
       game.destroy(true);
       gameRef.current = null;
     };
@@ -3925,11 +4374,66 @@ export function CommuteGame({
     gameRef.current?.canvas.focus();
   };
 
+  const handleInteract = () => {
+    gameRef.current?.events.emit('commute:interact');
+    gameRef.current?.canvas.focus();
+  };
+
+  const handleDirectionChoice = (direction: string) => {
+    gameRef.current?.events.emit('commute:choose-direction', direction);
+    gameRef.current?.canvas.focus();
+  };
+
   const handleRestartJourney = () => {
     completionHandledRef.current = false;
     const scene = gameRef.current?.scene.getScene('CommuteQuest');
     scene?.scene.restart();
     window.setTimeout(() => gameRef.current?.canvas.focus(), 0);
+  };
+
+  const handleDebugCheckpoint = (checkpointId: DebugCheckpointId) => {
+    const scene = gameRef.current?.scene.getScene('CommuteQuest') as CommuteQuestScene | undefined;
+    if (!scene || !gameRef.current) return;
+    // Development jumps are visual inspection tools, not reward-bearing runs.
+    completionHandledRef.current = true;
+    gameRef.current.events.once('commute:ready', () => {
+      const restartedScene = gameRef.current?.scene.getScene('CommuteQuest') as CommuteQuestScene | undefined;
+      if (checkpointId === 'the-signature-arrival') {
+        restartedScene?.debugEnterStationStage('the-signature-exterior');
+        window.setTimeout(() => restartedScene?.debugFinishJourney(), 260);
+      } else if (checkpointId === 'bus-entry' || checkpointId === 'bus-seated') {
+        if (checkpointId === 'bus-seated') restartedScene?.debugEnterBusSeated();
+        else restartedScene?.debugEnterBusInterior();
+      } else if (
+        checkpointId === 'lrt-seated' ||
+        checkpointId === 'nel-seated' ||
+        checkpointId === 'dtl-seated'
+      ) {
+        restartedScene?.debugEnterRailSeated(
+          checkpointId === 'lrt-seated'
+            ? 'kadaloor-lrt'
+            : checkpointId === 'nel-seated'
+              ? 'punggol-nel'
+              : 'little-india-dtl',
+        );
+      } else if (
+        checkpointId === 'lrt-platform-open' ||
+        checkpointId === 'nel-platform-open' ||
+        checkpointId === 'dtl-platform-open'
+      ) {
+        restartedScene?.debugEnterRailPlatform(
+          checkpointId === 'lrt-platform-open'
+            ? 'kadaloor-lrt'
+            : checkpointId === 'nel-platform-open'
+              ? 'punggol-nel'
+              : 'little-india-dtl',
+        );
+      } else {
+        restartedScene?.debugEnterStationStage(checkpointId);
+      }
+      gameRef.current?.canvas.focus();
+    });
+    scene.scene.restart();
   };
 
   const closeMrtMap = () => {
@@ -3949,6 +4453,7 @@ export function CommuteGame({
     'seated',
     'bus-moving',
     'aisle',
+    'bus-stop-open',
     'tap-out',
     'choose-exit-item',
     'exit-item-selected',
@@ -3958,13 +4463,30 @@ export function CommuteGame({
     'alighting',
     'wrong-stop',
   ].includes(context);
-  const showBag = [
+  const busJourneyLabel = [
     'choose-item',
     'item-selected',
+    'reader',
+    'wrong-item',
+    'driver-warning',
+    'tapping',
+    'fare-success',
+    'standing',
+    'seated',
+  ].includes(context)
+    ? 'Service 50 · Boarding'
+    : context === 'wrong-stop'
+      ? 'Service 50 · Wrong stop'
+      : context === 'alighting'
+        ? 'Service 50 · Punggol Interchange'
+        : busDoorsOpen && busStopName
+          ? `Service 50 · ${busStopName}`
+          : 'Service 50 · To Punggol';
+  const showBag = [
+    'choose-item',
     'wrong-item',
     'driver-warning',
     'choose-exit-item',
-    'exit-item-selected',
     'tap-out-warning',
     'last-stop-reminder',
   ].includes(context);
@@ -3978,10 +4500,18 @@ export function CommuteGame({
     ? 1
     : context.startsWith('nel-') || context.startsWith('punggol-') || context === 'little-india-alight'
       ? 2
-      : context.startsWith('dtl-') || context === 'little-india-transfer' || context.startsWith('expo-') || context === 'complete'
+      : context.startsWith('dtl-') || context === 'little-india-transfer' || context.startsWith('expo-')
         ? 3
         : 0;
-  const isRail = railStep > 0;
+  const isExpoExit = context === 'expo-exit';
+  const isRail = railStep > 0 && !isExpoExit;
+  const vehicleDoorPhase = vehicleDoorPhaseFor(
+    context,
+    context.includes('riding') ? railInteriorDoorsOpen : busDoorsOpen,
+  );
+  const railProgressStep = journeyBranch === 'bus' && railStep >= 2 ? railStep - 1 : railStep;
+  const railProgressTotal = journeyBranch === 'bus' ? 2 : 3;
+  const isOffice = context === 'office-walk';
   const controlsLocked = [
     'bus-arriving',
     'tapping',
@@ -3999,9 +4529,15 @@ export function CommuteGame({
     'out-of-time',
     'complete',
   ].includes(context);
+  const directionChoices = context === 'nel-transfer' || context === 'nel-wrong-direction'
+    ? ['HarbourFront', 'Punggol Coast']
+    : context === 'dtl-transfer' || context === 'dtl-wrong-direction'
+      ? ['Expo', 'Bukit Panjang']
+      : undefined;
+  const showInteractControl = !controlsLocked && (isBusInterior || isRail);
   return (
     <section
-      className="relative overflow-hidden rounded-[28px] bg-sg-navy shadow-card"
+      className="relative mx-auto w-full max-h-[calc(100dvh-7rem)] max-w-[1280px] overflow-hidden rounded-[28px] bg-sg-navy shadow-card [&_button:focus-visible]:outline [&_button:focus-visible]:outline-4 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-amber-300 [&_select:focus-visible]:outline [&_select:focus-visible]:outline-4 [&_select:focus-visible]:outline-amber-300"
       data-commute-context={context}
       data-bus-stop={busStopName ?? ''}
       data-bus-doors={busDoorsOpen ? 'open' : 'closed'}
@@ -4009,19 +4545,30 @@ export function CommuteGame({
       data-bus-dwell-seconds={busDwell?.seconds ?? ''}
       data-rail-stop={railStop?.station ?? ''}
       data-rail-doors={railInteriorDoorsOpen ? 'open' : 'closed'}
+      data-vehicle-door-phase={vehicleDoorPhase}
       data-rail-hearts={railHearts}
+      data-last-wrong-rail-stop={wrongRailStop?.station ?? ''}
     >
+      <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {CONTEXT_COPY[context]}
+        {busStopName ? ` Bus stop: ${busStopName}.` : ''}
+        {railStop ? ` Current stop: ${railStop.station}.` : ''}
+        {railInteriorDoorsOpen ? ' Train doors open.' : ''}
+        {isRail ? ` ${railHearts} travel chances remaining.` : ''}
+      </p>
       <div ref={parentRef} className="aspect-video w-full [&>canvas]:block" />
 
-      <button
-        type="button"
-        aria-label="Open Singapore MRT map"
-        aria-expanded={mrtMapOpen}
-        className="absolute left-2 top-20 z-[75] rounded-xl border-2 border-white bg-sg-navy/95 px-2.5 py-1.5 text-[10px] font-black text-white shadow-xl transition-transform hover:scale-105 active:scale-95 sm:left-3 sm:top-3 sm:px-3 sm:py-2 sm:text-xs"
-        onClick={() => setMrtMapOpen(true)}
-      >
-        🗺️ MRT MAP
-      </button>
+      {context !== 'complete' && (
+        <button
+          type="button"
+          aria-label="Open Singapore MRT map"
+          aria-expanded={mrtMapOpen}
+          className="absolute bottom-2 right-2 z-[83] flex size-11 items-center justify-center rounded-xl border-2 border-white bg-sg-navy/95 p-0 text-[10px] font-black text-white shadow-xl transition-transform hover:scale-105 active:scale-95 sm:bottom-auto sm:left-3 sm:right-auto sm:top-3 sm:size-auto sm:px-3 sm:py-2 sm:text-xs"
+          onClick={() => setMrtMapOpen(true)}
+        >
+          <span aria-hidden="true">🗺️</span><span className="sr-only sm:not-sr-only sm:ml-1">MRT MAP</span>
+        </button>
+      )}
 
       {mrtMapOpen && (
         <div
@@ -4036,6 +4583,7 @@ export function CommuteGame({
               <p className="text-xs font-bold text-white/70">Reference map — work out the route yourself</p>
             </div>
             <button
+              ref={mapCloseRef}
               type="button"
               className="rounded-xl border-2 border-white bg-white px-4 py-2 text-sm font-black text-sg-navy"
               onClick={closeMrtMap}
@@ -4056,16 +4604,22 @@ export function CommuteGame({
         </div>
       )}
 
-      <div className="pointer-events-none absolute left-2 right-2 top-2 z-[65] rounded-2xl bg-sg-navy/90 px-3 py-2 text-center text-white shadow-lg backdrop-blur-sm sm:left-1/2 sm:right-auto sm:top-3 sm:w-[min(52%,36rem)] sm:-translate-x-1/2">
+      {context !== 'complete' && (
+      <div className={`pointer-events-none absolute left-2 right-2 top-2 z-[65] rounded-2xl bg-sg-navy/90 px-3 py-2 text-center text-white shadow-lg backdrop-blur-sm sm:left-1/2 sm:right-auto sm:w-[min(46%,34rem)] sm:-translate-x-1/2 ${directionChoices ? 'sm:top-3' : 'sm:bottom-3 sm:top-auto'}`}>
         <p className="text-[10px] font-black uppercase tracking-[0.18em] text-sg-xp">
-          {isRail
-            ? `${railStep} / 3 · ${railStep === 1 ? 'Punggol LRT' : railStep === 2 ? 'North East Line' : 'Downtown Line'}`
+          {isExpoExit
+            ? 'Expo · Exit D'
+            : isRail
+            ? `${railProgressStep} / ${railProgressTotal} · ${railStep === 1 ? 'Punggol LRT' : railStep === 2 ? 'North East Line' : 'Downtown Line'} · to TCS entrance`
+            : isOffice
+              ? 'Final walk · The Signature'
             : isBusInterior
-              ? 'Service 50 · Boarding'
+              ? busJourneyLabel
               : 'Kadaloor · Exit B'}
         </p>
         <p className="mt-0.5 text-xs font-extrabold leading-snug sm:text-sm">{CONTEXT_COPY[context]}</p>
       </div>
+      )}
 
       {railStop && ['lrt-riding', 'nel-riding', 'dtl-riding'].includes(context) && (
         <div className="pointer-events-none absolute left-2 top-32 z-50 w-[min(42%,20rem)] sm:left-3 sm:top-16 sm:w-[min(30%,20rem)]">
@@ -4084,6 +4638,11 @@ export function CommuteGame({
               <p className="mt-1 hidden text-[11px] font-bold leading-snug text-white/80 sm:block">
                 {railStop.fact}
               </p>
+              {railStop.nextStation && (
+                <p className={`mt-1.5 text-[10px] font-black uppercase tracking-wide ${railStop.targetIsNext ? 'text-amber-300' : 'text-white/70'}`}>
+                  Next: {railStop.nextStation}{railStop.targetIsNext ? ' · prepare to alight' : ''}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -4177,20 +4736,13 @@ export function CommuteGame({
       )}
 
       {!controlsLocked && (
-        <div aria-label="Touch movement controls" className="absolute bottom-2 left-2 grid grid-cols-3 gap-1 sm:hidden">
-          <span />
-          <button type="button" aria-label="Walk up" className="size-9 rounded-lg bg-sg-navy/90 text-white" onClick={() => handleNudge('up')}>↑</button>
-          <span />
-          <button type="button" aria-label="Walk left" className="size-9 rounded-lg bg-sg-navy/90 text-white" onClick={() => handleNudge('left')}>←</button>
-          <button type="button" aria-label="Walk down" className="size-9 rounded-lg bg-sg-navy/90 text-white" onClick={() => handleNudge('down')}>↓</button>
-          <button type="button" aria-label="Walk right" className="size-9 rounded-lg bg-sg-navy/90 text-white" onClick={() => handleNudge('right')}>→</button>
-        </div>
+        <TouchMovementControls onNudge={handleNudge} />
       )}
 
       {context === 'bus-stop' && !raisedHand && (
         <button
           type="button"
-          className="absolute bottom-5 right-5 rounded-2xl border-4 border-white bg-sg-xp px-5 py-3 text-sm font-black text-sg-navy shadow-xl transition-transform hover:scale-105 active:scale-95"
+          className="absolute bottom-2 right-16 z-[84] min-h-11 rounded-xl border-2 border-white bg-sg-xp px-3 py-2 text-xs font-black text-sg-navy shadow-xl transition-transform hover:scale-105 active:scale-95 sm:bottom-5 sm:right-5 sm:rounded-2xl sm:border-4 sm:px-5 sm:py-3 sm:text-sm"
           onClick={handleRaiseHand}
         >
           RAISE HAND
@@ -4198,39 +4750,7 @@ export function CommuteGame({
       )}
 
       {showBag && (
-        <aside
-          aria-label="Your bag"
-          className="absolute right-4 top-1/2 w-32 -translate-y-1/2 rounded-2xl border-2 border-white/20 bg-sg-navy/95 p-2.5 text-white shadow-2xl backdrop-blur-sm"
-        >
-          <p className="mb-2 text-center text-[10px] font-black uppercase tracking-[0.16em] text-sg-xp">
-            Your bag
-          </p>
-          <div className="space-y-2">
-            {BAG_ITEMS.map((item) => {
-              const selected = selectedItem === item.kind;
-              return (
-                <button
-                  key={item.kind}
-                  type="button"
-                  aria-pressed={selected}
-                  className={`flex w-full flex-col items-center rounded-xl border-2 px-2 py-2 text-[11px] font-extrabold transition ${
-                    selected
-                      ? 'border-sg-xp bg-sg-xp/20 text-sg-xp'
-                      : 'border-white/15 bg-white/5 text-white hover:border-white/50 hover:bg-white/10'
-                  }`}
-                  onClick={() => handleSelectItem(item.kind)}
-                >
-                  <img
-                    src={item.image}
-                    alt=""
-                    className="mb-1 h-11 w-16 object-contain"
-                  />
-                  {item.label}
-                </button>
-              );
-            })}
-          </div>
-        </aside>
+        <FareBag selectedItem={selectedItem} onSelect={handleSelectItem} />
       )}
 
       {context === 'bus-moving' && (
@@ -4239,7 +4759,7 @@ export function CommuteGame({
           aria-label="Request next bus stop"
           aria-pressed={busStopRequested}
           disabled={busStopRequested || busDoorsOpen}
-          className={`absolute bottom-5 right-5 flex size-20 flex-col items-center justify-center rounded-full border-4 text-xs font-black shadow-2xl transition-transform sm:size-24 sm:text-sm ${
+          className={`absolute bottom-2 right-16 z-[84] flex size-14 flex-col items-center justify-center rounded-full border-3 text-[10px] font-black shadow-2xl transition-transform sm:bottom-5 sm:right-5 sm:size-24 sm:border-4 sm:text-sm ${
             busDoorsOpen
               ? 'border-emerald-100 bg-emerald-600 text-white'
               : busStopRequested
@@ -4253,11 +4773,26 @@ export function CommuteGame({
         </button>
       )}
 
+      {directionChoices && (
+        <DirectionControls directions={directionChoices} onChoose={handleDirectionChoice} />
+      )}
+
+      {showInteractControl && !directionChoices && (
+        <button
+          type="button"
+          className="absolute bottom-2 left-auto right-14 z-[84] min-h-11 rounded-xl border-2 border-white bg-sg-xp px-3 py-2 text-xs font-black text-sg-navy shadow-xl sm:bottom-3 sm:right-3 sm:px-4"
+          onClick={handleInteract}
+        >
+          INTERACT <span className="hidden sm:inline">· E / SPACE</span>
+        </button>
+      )}
+
+      {import.meta.env.DEV && (
+        <DebugCheckpointSelector onChoose={handleDebugCheckpoint} />
+      )}
+
       {context === 'complete' && (
-        <div className="absolute bottom-5 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-2xl bg-sg-navy/95 p-3 text-white shadow-2xl">
-          <span className="whitespace-nowrap text-sm font-black">+{completionXp} XP</span>
-          <button type="button" className="rounded-xl bg-sg-xp px-5 py-2 text-sm font-black text-sg-navy" onClick={onDone}>DONE</button>
-        </div>
+        <CompletionReward xp={completionXp} onDone={onDone} />
       )}
 
     </section>

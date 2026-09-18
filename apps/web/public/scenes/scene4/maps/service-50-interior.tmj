@@ -135,6 +135,25 @@
       "color": "#2563eb",
       "draworder": "topdown",
       "id": 4,
+      "name": "Seats",
+      "objects": [
+        { "id": 16, "name": "Bus seat 1", "point": true, "properties": [{ "name": "footFloorY", "type": "int", "value": 635 }, { "name": "seatBottomY", "type": "int", "value": 505 }, { "name": "scaleProfile", "type": "string", "value": "bus-seated" }], "type": "SeatAnchor", "x": 1048, "y": 405 },
+        { "id": 17, "name": "Bus seat 2", "point": true, "properties": [{ "name": "footFloorY", "type": "int", "value": 635 }, { "name": "seatBottomY", "type": "int", "value": 505 }, { "name": "scaleProfile", "type": "string", "value": "bus-seated" }], "type": "SeatAnchor", "x": 1144, "y": 405 },
+        { "id": 18, "name": "Bus seat 3", "point": true, "properties": [{ "name": "footFloorY", "type": "int", "value": 635 }, { "name": "seatBottomY", "type": "int", "value": 505 }, { "name": "scaleProfile", "type": "string", "value": "bus-seated" }], "type": "SeatAnchor", "x": 1240, "y": 405 },
+        { "id": 19, "name": "Bus seat 4", "point": true, "properties": [{ "name": "footFloorY", "type": "int", "value": 635 }, { "name": "seatBottomY", "type": "int", "value": 505 }, { "name": "scaleProfile", "type": "string", "value": "bus-seated" }], "type": "SeatAnchor", "x": 1336, "y": 405 },
+        { "id": 20, "name": "Bus seat 5", "point": true, "properties": [{ "name": "footFloorY", "type": "int", "value": 635 }, { "name": "seatBottomY", "type": "int", "value": 505 }, { "name": "scaleProfile", "type": "string", "value": "bus-seated" }], "type": "SeatAnchor", "x": 1432, "y": 405 },
+        { "id": 21, "name": "Bus seat 6", "point": true, "properties": [{ "name": "footFloorY", "type": "int", "value": 635 }, { "name": "seatBottomY", "type": "int", "value": 505 }, { "name": "scaleProfile", "type": "string", "value": "bus-seated" }], "type": "SeatAnchor", "x": 1528, "y": 405 }
+      ],
+      "opacity": 0.5,
+      "type": "objectgroup",
+      "visible": false,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "color": "#2563eb",
+      "draworder": "topdown",
+      "id": 7,
       "name": "Spawns",
       "objects": [
         { "id": 7, "name": "from-front-door", "point": true, "rotation": 0, "type": "PlayerSpawn", "visible": true, "x": 340, "y": 670 }
@@ -174,8 +193,8 @@
       "y": 0
     }
   ],
-  "nextlayerid": 7,
-  "nextobjectid": 16,
+  "nextlayerid": 8,
+  "nextobjectid": 22,
   "orientation": "orthogonal",
   "properties": [
     { "name": "displayName", "type": "string", "value": "SBS Transit Service 50 — Front Entrance" },

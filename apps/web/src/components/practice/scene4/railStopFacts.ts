@@ -10,6 +10,16 @@ export interface RailStopFact {
 // keeps the overall journey moving.
 export const RAIL_STOP_DWELL_MS = 6000;
 
+export function nextBouncingStopIndex(index: number, total: number, direction: 1 | -1) {
+  let nextDirection = direction;
+  let nextIndex = index + nextDirection;
+  if (nextIndex < 0 || nextIndex >= total) {
+    nextDirection = nextDirection === 1 ? -1 : 1;
+    nextIndex = index + nextDirection;
+  }
+  return { direction: nextDirection, index: nextIndex };
+}
+
 export const RAIL_STOP_FACTS: Record<RailLegId, RailStopFact[]> = {
   'kadaloor-lrt': [
     {
@@ -181,4 +191,25 @@ export const RAIL_STOP_FACTS: Record<RailLegId, RailStopFact[]> = {
       fact: 'Singapore EXPO opened in 1999 and is the country’s largest purpose-built convention and exhibition venue.',
     },
   ],
+};
+
+// The full arrays above remain the route/fact authority. Gameplay samples key
+// stations so the commute teaches the line without turning every intermediate
+// dwell into a long repetition. Target stops are always retained.
+const PLAYABLE_STOP_INDEXES: Record<RailLegId, readonly number[]> = {
+  'kadaloor-lrt': [0, 1, 2],
+  'punggol-nel': [0, 4, 7, 8, 9],
+  'little-india-dtl': [0, 1, 3, 6, 13, 19, 21, 22],
+};
+
+export const RAIL_PLAYABLE_STOP_FACTS: Record<RailLegId, RailStopFact[]> = {
+  'kadaloor-lrt': PLAYABLE_STOP_INDEXES['kadaloor-lrt'].map(
+    (index) => RAIL_STOP_FACTS['kadaloor-lrt'][index],
+  ),
+  'punggol-nel': PLAYABLE_STOP_INDEXES['punggol-nel'].map(
+    (index) => RAIL_STOP_FACTS['punggol-nel'][index],
+  ),
+  'little-india-dtl': PLAYABLE_STOP_INDEXES['little-india-dtl'].map(
+    (index) => RAIL_STOP_FACTS['little-india-dtl'][index],
+  ),
 };

@@ -6,11 +6,11 @@
     {"id":1,"image":"../environments/punggol-nel-escalator.png","name":"BackgroundArt","type":"imagelayer","visible":true,"x":0,"y":0},
     {"id":2,"name":"Environment","objects":[{"height":390,"id":1,"name":"Balanced paid-concourse down escalator","type":"escalator","width":1200,"x":280,"y":260}],"type":"objectgroup"},
     {"id":3,"name":"Interactions","objects":[
-      {"height":90,"id":2,"name":"Escalator entry","properties":[{"name":"action","type":"string","value":"ride_down"}],"type":"escalator-entry","width":90,"x":945,"y":295},
-      {"height":150,"id":3,"name":"Next area","properties":[{"name":"target","type":"string","value":"punggol-nel-platform"}],"type":"portal","width":360,"x":690,"y":550}
+      {"height":100,"id":2,"name":"Escalator entry","properties":[{"name":"action","type":"string","value":"ride_down"}],"type":"escalator-entry","width":180,"x":1450,"y":250},
+      {"height":130,"id":3,"name":"Next area","properties":[{"name":"target","type":"string","value":"punggol-nel-platform"}],"type":"portal","width":300,"x":1270,"y":570}
     ],"type":"objectgroup"},
     {"id":4,"name":"Spawns","objects":[{"id":4,"name":"player-start","type":"spawn","x":450,"y":330}],"type":"objectgroup"},
-    {"id":5,"name":"Paths","objects":[{"id":5,"name":"Escalator descent","polyline":[{"x":0,"y":0},{"x":-20,"y":250}],"type":"path","x":990,"y":340}],"type":"objectgroup"},
+    {"id":5,"name":"Paths","objects":[{"id":5,"name":"Escalator descent","polyline":[{"x":0,"y":0},{"x":-125,"y":310}],"type":"path","x":1540,"y":300}],"type":"objectgroup"},
     {"id":6,"name":"Camera","objects":[{"height":724,"id":6,"name":"Station framing","type":"camera","width":2176,"x":0,"y":0}],"type":"objectgroup"}
   ],
   "nextlayerid":7,

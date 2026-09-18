@@ -6,6 +6,9 @@ import kadaloorMapSource from '../../../../public/scenes/scene4/maps/kadaloor-lr
 import punggolMapSource from '../../../../public/scenes/scene4/maps/punggol-nel.tmj?raw';
 import littleIndiaMapSource from '../../../../public/scenes/scene4/maps/little-india-dtl.tmj?raw';
 import busInteriorMapSource from '../../../../public/scenes/scene4/maps/service-50-interior.tmj?raw';
+import expoExitMapSource from '../../../../public/scenes/scene4/maps/expo-exit-d.tmj?raw';
+import signatureExteriorMapSource from '../../../../public/scenes/scene4/maps/the-signature-exterior.tmj?raw';
+import kadaloorExteriorMapSource from '../../../../public/scenes/scene4/maps/kadaloor-exterior.tmj?raw';
 
 const railMaps = [kadaloorMapSource, punggolMapSource, littleIndiaMapSource].map(
   (source) => JSON.parse(source) as {
@@ -34,9 +37,12 @@ describe('Scene 4 rail route', () => {
     Object.values(RAIL_STOP_FACTS).flat().forEach((stop) => {
       expect(stop.fact.length, `${stop.station} fact`).toBeGreaterThan(45);
     });
-    expect(SCENE4_ROUTE.find((leg) => leg.id === 'punggol-nel')?.stops).toEqual(
-      RAIL_STOP_FACTS['punggol-nel'].map((stop) => stop.station),
-    );
+    // Stop sequences have one authority. Route summaries deliberately avoid
+    // duplicating them because partial copies previously drifted out of sync.
+    SCENE4_ROUTE.forEach((leg) => {
+      expect(leg).not.toHaveProperty('stops');
+      expect(RAIL_STOP_FACTS[leg.id].at(-1)?.station).toBeTruthy();
+    });
   });
 
   it('models bus and LRT as alternatives that merge only at Punggol', () => {
@@ -57,7 +63,53 @@ describe('Scene 4 rail route', () => {
       'little-india-transfer',
       'little-india-dtl',
       'expo-dtl-arrival',
+      'expo-fare-gates',
+      'expo-exit-d',
+      'the-signature-exterior',
     ]);
+    expect(SCENE4_ROUTE_GRAPH.shared.at(-1)).toBe('the-signature-exterior');
+  });
+
+  it('keeps wrong bus services non-boardable while Service 50 remains recoverable', () => {
+    const map = JSON.parse(kadaloorExteriorMapSource) as {
+      layers: Array<{
+        name: string;
+        objects?: Array<{
+          name: string;
+          properties?: Array<{ name: string; value: string }>;
+        }>;
+      }>;
+    };
+    const interactions = map.layers.find((layer) => layer.name === 'Interactions')?.objects ?? [];
+    const boarding = interactions.filter((object) => object.name.includes('boarding'));
+    const waiting = interactions.find((object) => object.name === 'Wait inside bus stop');
+    expect(waiting?.properties).toContainEqual(expect.objectContaining({ name: 'service', value: '50' }));
+    expect(boarding).toHaveLength(1);
+    expect(boarding[0].name).toContain('Service 50');
+    expect(boarding.some((object) => /666|683/.test(object.name))).toBe(false);
+  });
+
+  it('requires the playable walk to The Signature entrance after Expo tap-out', () => {
+    const destinationMaps = [expoExitMapSource, signatureExteriorMapSource].map(
+      (source) => JSON.parse(source) as {
+        layers: Array<{ name: string; objects: Array<{ name: string }> }>;
+      },
+    );
+    destinationMaps.forEach((map) => {
+      expect(map.layers.map((layer) => layer.name)).toEqual(expect.arrayContaining([
+        'BackgroundArt', 'Environment', 'Interactions', 'Spawns', 'Paths', 'Camera',
+      ]));
+      expect(map.layers.find((layer) => layer.name === 'Spawns')?.objects)
+        .toEqual(expect.arrayContaining([expect.objectContaining({ name: 'player-start' })]));
+      expect(map.layers.find((layer) => layer.name === 'Interactions')?.objects)
+        .toEqual(expect.arrayContaining([expect.objectContaining({ name: 'Next area' })]));
+    });
+
+    ['expo-exit-d.png', 'the-signature-exterior.png'].forEach((filename) => {
+      const png = readFileSync(`public/scenes/scene4/environments/${filename}`);
+      expect(png.readUInt32BE(16), `${filename} width`).toBeGreaterThanOrEqual(2170);
+      expect(png.readUInt32BE(20), `${filename} height`).toBeGreaterThanOrEqual(720);
+    });
   });
   it('keeps the brief route in travel order', () => {
     expect(SCENE4_ROUTE.map((leg) => leg.id)).toEqual([
@@ -128,6 +180,18 @@ describe('Scene 4 rail route', () => {
     });
   });
 
+  it('keeps each open/closed platform-door export pixel-aligned', () => {
+    [
+      ['punggol-nel-platform-doors-closed.png', 'punggol-nel-platform-doors-open.png'],
+      ['little-india-dtl-platform-doors-closed.png', 'little-india-dtl-platform-doors-open.png'],
+    ].forEach(([closedName, openName]) => {
+      const closed = readFileSync(`public/scenes/scene4/environments/${closedName}`);
+      const open = readFileSync(`public/scenes/scene4/environments/${openName}`);
+      expect(open.readUInt32BE(16), `${openName} width`).toBe(closed.readUInt32BE(16));
+      expect(open.readUInt32BE(20), `${openName} height`).toBe(closed.readUInt32BE(20));
+    });
+  });
+
   it('ends only after the Downtown Line leg', () => {
     expect(nextRailLeg('kadaloor-lrt')).toBe('punggol-nel');
     expect(nextRailLeg('punggol-nel')).toBe('little-india-dtl');
@@ -182,6 +246,31 @@ describe('Scene 4 rail route', () => {
     expect(reader).toBeDefined();
     expect(exit).toBeDefined();
     expect(reader!.x).toBeLessThan(exit!.x);
+  });
+
+  it('authors every usable Bus 50 seat with explicit contact metadata', () => {
+    const busMap = JSON.parse(busInteriorMapSource) as {
+      layers: Array<{
+        name: string;
+        objects: Array<{
+          name: string;
+          properties?: Array<{ name: string; value: number | string }>;
+          x: number;
+          y: number;
+        }>;
+      }>;
+    };
+    const seats = busMap.layers.find((layer) => layer.name === 'Seats')?.objects ?? [];
+    expect(seats).toHaveLength(6);
+    expect(new Set(seats.map((seat) => seat.x)).size).toBe(6);
+    seats.forEach((seat) => {
+      expect(seat.y, `${seat.name} hip anchor`).toBeGreaterThan(0);
+      expect(seat.properties).toEqual(expect.arrayContaining([
+        expect.objectContaining({ name: 'footFloorY', value: 635 }),
+        expect.objectContaining({ name: 'seatBottomY', value: 505 }),
+        expect.objectContaining({ name: 'scaleProfile', value: 'bus-seated' }),
+      ]));
+    });
   });
 
   it('ships complete full-width panorama art for every rail map', () => {

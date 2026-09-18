@@ -65,6 +65,25 @@ async function clickFareGate(page: Page, chooseNearest = true) {
   return gate.index as number;
 }
 
+async function moveNearFareGate(page: Page) {
+  const debug = await commuteCanvas(page).evaluate((element) => (
+    JSON.parse((element as HTMLCanvasElement).dataset.scene4Debug ?? '{}')
+  ));
+  const gates = (debug.fareGateReaders ?? []).filter((gate: { entry: boolean }) => gate.entry);
+  const nearest = gates.sort((a: { x: number }, b: { x: number }) => (
+    Math.abs(a.x - debug.playerX) - Math.abs(b.x - debug.playerX)
+  ))[0];
+  if (!nearest) throw new Error('No usable fare gate is available');
+  const distance = Math.abs(nearest.x - debug.playerX);
+  if (distance > 90) {
+    await hold(
+      page,
+      debug.playerX < nearest.x ? 'ArrowRight' : 'ArrowLeft',
+      Math.max(150, Math.ceil((distance - 80) / 0.2)),
+    );
+  }
+}
+
 async function clickBusFareReader(page: Page, reader: 'entry' | 'exit') {
   const canvas = commuteCanvas(page);
   const bounds = await canvas.boundingBox();
@@ -82,23 +101,6 @@ async function clickBusFareReader(page: Page, reader: 'entry' | 'exit') {
   });
 }
 
-async function clickBusSeat(page: Page, index = 0) {
-  const canvas = commuteCanvas(page);
-  const bounds = await canvas.boundingBox();
-  if (!bounds) throw new Error('Commute canvas has no bounds');
-  const debug = await canvas.evaluate((element) => (
-    JSON.parse((element as HTMLCanvasElement).dataset.scene4Debug ?? '{}')
-  ));
-  const seat = debug.busSeats?.[index];
-  if (!seat) throw new Error(`Bus seat ${index} is unavailable`);
-  await canvas.click({
-    position: {
-      x: (seat.x - debug.cameraX) * (bounds.width / 1280),
-      y: (seat.y - 80 - debug.cameraY) * (bounds.height / 720),
-    },
-  });
-}
-
 async function board(page: Page, boardingContext: string) {
   await waitForContext(page, boardingContext, boardingContext === 'nel-boarding' ? 35_000 : 15_000);
   if (boardingContext === 'nel-boarding' || boardingContext === 'dtl-boarding') {
@@ -111,8 +113,38 @@ async function board(page: Page, boardingContext: string) {
       ];
     })).toEqual([true, true, true]);
   }
-  await hold(page, 'ArrowUp', 300);
-  await hold(page, 'ArrowRight', 1_800);
+  await page.getByRole('button', { name: /INTERACT/ }).click();
+}
+
+async function alightThroughOpenDoor(page: Page, destinationContext: string) {
+  const playerX = await commuteCanvas(page).evaluate((element) => (
+    JSON.parse((element as HTMLCanvasElement).dataset.scene4Debug ?? '{}').playerX as number
+  ));
+  const railDoorCenterX = 1580;
+  const horizontalDistance = Math.abs(railDoorCenterX - playerX);
+  if (horizontalDistance > 30) {
+    await hold(
+      page,
+      playerX < railDoorCenterX ? 'ArrowRight' : 'ArrowLeft',
+      Math.min(5_500, Math.ceil(horizontalDistance / 0.2)),
+    );
+  }
+  await holdUntilContext(page, 'ArrowUp', destinationContext, 20_000);
+}
+
+async function finishExpoToOffice(page: Page) {
+  await holdUntilContext(page, 'ArrowRight', 'expo-fare-gates', 20_000);
+  await page.waitForTimeout(700);
+  await moveNearFareGate(page);
+  await clickFareGate(page);
+  await waitForContext(page, 'expo-gates-open');
+  await page.waitForTimeout(700);
+  await hold(page, 'ArrowRight', 750);
+  await holdUntilContext(page, 'ArrowUp', 'expo-exit', 15_000);
+  await page.waitForTimeout(600);
+  await holdUntilContext(page, 'ArrowRight', 'office-walk', 20_000);
+  await page.waitForTimeout(600);
+  await holdUntilContext(page, 'ArrowRight', 'complete', 20_000);
 }
 
 async function playSharedRailJourney(page: Page) {
@@ -122,20 +154,20 @@ async function playSharedRailJourney(page: Page) {
       JSON.parse((element as HTMLCanvasElement).dataset.scene4Debug ?? '{}').fareGateReaders
     ));
     expect(gateReaders.map((reader: { x: number }) => reader.x)).toEqual([
-      590, 686, 782, 878, 974, 1070, 1166, 1262, 1358, 1454, 1550,
+      600, 785, 970, 1155, 1340, 1525,
     ]);
     expect(gateReaders.map((reader: { entry: boolean }) => reader.entry)).toEqual([
-      true, true, true, true, true, true, true, false, false, false, false,
+      true, true, true, false, false, false,
     ]);
     const gateVisualsBefore = await commuteCanvas(page).evaluate((element) => (
       JSON.parse((element as HTMLCanvasElement).dataset.scene4Debug ?? '{}').fareGateVisuals
     ));
-    expect(gateVisualsBefore).toHaveLength(10);
+    expect(gateVisualsBefore).toHaveLength(5);
     expect(gateVisualsBefore.map((gate: { x: number }) => gate.x)).toEqual([
-      638, 734, 830, 926, 1022, 1118, 1214, 1310, 1406, 1502,
+      693, 878, 1063, 1248, 1433,
     ]);
     expect(gateVisualsBefore.every((gate: { width: number; height: number; texture: string }) => (
-      gate.width === 96
+      gate.width === 135
       && gate.height === 60
       && gate.texture === 'scene4-punggol-fare-door-closed'
     ))).toBe(true);
@@ -143,10 +175,10 @@ async function playSharedRailJourney(page: Page) {
       JSON.parse((element as HTMLCanvasElement).dataset.scene4Debug ?? '{}').fareGatePosts
     ));
     expect(gatePosts.map((post: { x: number }) => post.x)).toEqual([
-      590, 686, 782, 878, 974, 1070, 1166, 1262, 1358, 1454, 1550,
+      600, 785, 970, 1155, 1340, 1525,
     ]);
     expect(gatePosts.every((post: { width: number; height: number }) => (
-      post.width === 68 && post.height === 170
+      post.width === 60 && post.height === 170
     ))).toBe(true);
     await hold(page, 'ArrowRight', 2_500);
     const openedGate = await clickFareGate(page);
@@ -203,9 +235,10 @@ async function playSharedRailJourney(page: Page) {
   await expect.poll(async () => commuteCanvas(page).evaluate((element) => (
     JSON.parse((element as HTMLCanvasElement).dataset.scene4Debug ?? '{}').nelLiveBoard?.harbourFrontText
   )), { timeout: 25_000 }).toContain('1 min');
-  await expect(page.getByRole('button', { name: 'Towards HarbourFront' })).toHaveCount(0);
-  await holdUntilContext(page, 'ArrowLeft', 'nel-wrong-direction');
-  await holdUntilContext(page, 'ArrowRight', 'nel-boarding', 35_000);
+  await expect(page.getByRole('button', { name: 'TOWARDS HARBOURFRONT' })).toBeVisible();
+  await page.getByRole('button', { name: 'TOWARDS PUNGGOL COAST' }).click();
+  await waitForContext(page, 'nel-wrong-direction');
+  await page.getByRole('button', { name: 'TOWARDS HARBOURFRONT' }).click();
   await board(page, 'nel-boarding');
   await expect(page.locator('[data-rail-stop]')).toHaveAttribute('data-rail-stop', 'Sengkang', { timeout: 10_000 });
   await expect.poll(async () => commuteCanvas(page).evaluate((element) => {
@@ -213,15 +246,13 @@ async function playSharedRailJourney(page: Page) {
     return [debug.mode, debug.playerVisible];
   })).toEqual(['rail-interior', true]);
   await expect(page.locator('[data-rail-stop]')).toHaveAttribute('data-rail-stop', 'Little India', { timeout: 50_000 });
-  await page.getByRole('button', { name: 'Alight at Little India' }).click();
-  await waitForContext(page, 'little-india-alight', 20_000);
+  await alightThroughOpenDoor(page, 'little-india-alight');
   await hold(page, 'ArrowRight', 8_000);
   await waitForContext(page, 'little-india-transfer');
   await hold(page, 'ArrowRight', 8_500);
   await waitForContext(page, 'dtl-transfer');
-  await expect(page.getByRole('button', { name: 'Towards Expo' })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Towards Bukit Panjang' })).toHaveCount(0);
-  await holdUntilContext(page, 'ArrowRight', 'dtl-arriving');
+  await expect(page.getByRole('button', { name: 'TOWARDS EXPO' })).toBeVisible();
+  await page.getByRole('button', { name: 'TOWARDS EXPO' }).click();
   await board(page, 'dtl-boarding');
   await expect(page.locator('[data-rail-stop]')).toHaveAttribute('data-rail-stop', 'Rochor', { timeout: 10_000 });
   await expect.poll(async () => commuteCanvas(page).evaluate((element) => {
@@ -229,10 +260,8 @@ async function playSharedRailJourney(page: Page) {
     return [debug.mode, debug.playerVisible];
   })).toEqual(['rail-interior', true]);
   await expect(page.locator('[data-rail-stop]')).toHaveAttribute('data-rail-stop', 'Expo', { timeout: 120_000 });
-  await page.getByRole('button', { name: 'Alight at Expo' }).click();
-  await waitForContext(page, 'expo-alight', 20_000);
-  await hold(page, 'ArrowRight', 8_000);
-  await waitForContext(page, 'complete');
+  await alightThroughOpenDoor(page, 'expo-alight');
+  await finishExpoToOffice(page);
 }
 
 test('keeps the complete commute responsive on a phone viewport', async ({ page }) => {
@@ -245,6 +274,58 @@ test('keeps the complete commute responsive on a phone viewport', async ({ page 
   }));
   expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
   expect(layout.touchControls).toBe(true);
+
+  const before = await commuteCanvas(page).evaluate((element) => (
+    JSON.parse((element as HTMLCanvasElement).dataset.scene4Debug ?? '{}').playerX as number
+  ));
+  await page.getByRole('button', { name: 'Walk left' }).click();
+  await expect.poll(async () => commuteCanvas(page).evaluate((element) => (
+    JSON.parse((element as HTMLCanvasElement).dataset.scene4Debug ?? '{}').playerX as number
+  ))).toBeLessThan(before);
+});
+
+for (const viewport of [
+  { name: 'small desktop', width: 1024, height: 768 },
+  { name: 'tablet', width: 768, height: 1024 },
+  { name: 'wide desktop', width: 1440, height: 900 },
+]) {
+  test(`keeps critical journey controls visible on ${viewport.name}`, async ({ page }) => {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await openJourney(page);
+    await expect(commuteCanvas(page)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Open Singapore MRT map' })).toBeVisible();
+    const dimensions = await page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    }));
+    expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth);
+  });
+}
+
+test('honours reduced motion without blocking spatial progress', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openJourney(page);
+  await expect.poll(async () => commuteCanvas(page).evaluate((element) => (
+    JSON.parse((element as HTMLCanvasElement).dataset.scene4Debug ?? '{}').reducedMotion
+  ))).toBe(true);
+  const before = await commuteCanvas(page).evaluate((element) => (
+    JSON.parse((element as HTMLCanvasElement).dataset.scene4Debug ?? '{}').playerX as number
+  ));
+  await hold(page, 'ArrowLeft', 300);
+  await expect.poll(async () => commuteCanvas(page).evaluate((element) => (
+    JSON.parse((element as HTMLCanvasElement).dataset.scene4Debug ?? '{}').playerX as number
+  ))).toBeLessThan(before);
+});
+
+test('taps out at Expo with movement plus semantic interaction', async ({ page }) => {
+  await openJourney(page);
+  await page.getByRole('combobox', { name: 'Scene 4 development checkpoint' })
+    .selectOption('expo-fare-gates');
+  await waitForContext(page, 'expo-fare-gates');
+  await page.waitForTimeout(700);
+  await moveNearFareGate(page);
+  await page.keyboard.press('e');
+  await waitForContext(page, 'expo-gates-open');
 });
 
 test('faces front and back when walking vertically', async ({ page }) => {
@@ -268,39 +349,11 @@ test('keeps manual movement on the visible exterior floor', async ({ page }) => 
   const debug = await commuteCanvas(page).evaluate((element) => (
     JSON.parse((element as HTMLCanvasElement).dataset.scene4Debug ?? '{}')
   ));
-  expect(debug.walkableFloorBounds).toEqual({ minY: 430, maxY: 700 });
+  expect(debug.walkableFloorBounds).toMatchObject({ minX: 60, maxX: 2116, minY: 430, maxY: 700 });
   // The exterior collision body can stop his foot point slightly in front of
   // the hard floor limit, but he must never cross above that limit.
   expect(debug.playerY).toBeGreaterThanOrEqual(430);
   expect(debug.playerY).toBeLessThan(470);
-});
-
-test('dragging and saving the fare reader persists its exact position', async ({ page }) => {
-  await openJourney(page);
-  await page.getByRole('button', { name: 'RAISE HAND' }).click();
-  await waitForContext(page, 'choose-item');
-  await page.getByRole('button', { name: 'ADJUST READER' }).click();
-  await expect(page.locator('[data-placement-editing]')).toHaveAttribute('data-placement-editing', 'true');
-
-  const canvas = commuteCanvas(page);
-  const bounds = await canvas.boundingBox();
-  const debug = await canvas.evaluate((element) => JSON.parse((element as HTMLCanvasElement).dataset.scene4Debug ?? '{}'));
-  if (!bounds || !debug.fareReader) throw new Error('Fare reader debug position unavailable');
-  const scaleX = bounds.width / 1280;
-  const scaleY = bounds.height / 720;
-  const startX = bounds.x + (debug.fareReader.x - debug.cameraX) * scaleX;
-  const startY = bounds.y + (debug.fareReader.y + 55 - debug.cameraY) * scaleY;
-  await page.mouse.move(startX, startY);
-  await page.mouse.down();
-  await page.mouse.move(startX + 80 * scaleX, startY + 24 * scaleY, { steps: 8 });
-  await page.mouse.up();
-  await page.getByRole('button', { name: 'SAVE POSITION' }).click();
-
-  await expect(page.locator('[data-placement-editing]')).toHaveAttribute('data-placement-editing', 'false');
-  const placement = await page.evaluate(() => JSON.parse(localStorage.getItem('sgmode:scene4-object-placements:v1') ?? '{}'));
-  expect(placement['bus-entry-reader'].x).toBe(800);
-  expect(placement['bus-entry-reader'].y).toBeGreaterThanOrEqual(283);
-  expect(placement['bus-entry-reader'].y).toBeLessThanOrEqual(284);
 });
 
 test('keeps both bus fare readers mounted after the entry reader is used', async ({ page }) => {
@@ -338,21 +391,14 @@ test('keeps both bus fare readers mounted after the entry reader is used', async
 
 test('can stand up from a bus seat and resume walking without flickering', async ({ page }) => {
   await openJourney(page);
-  await page.getByRole('button', { name: 'RAISE HAND' }).click();
-  await waitForContext(page, 'choose-item');
-  await page.getByRole('button', { name: 'Travel card' }).click();
-  await hold(page, 'ArrowRight', 1_200);
-  await clickBusFareReader(page, 'entry');
-  await waitForContext(page, 'aisle');
-
-  await clickBusSeat(page);
-  await waitForContext(page, 'seated');
+  await page.getByRole('combobox', { name: 'Scene 4 development checkpoint' })
+    .selectOption('bus-seated');
   await expect.poll(async () => commuteCanvas(page).evaluate((element) => {
     const debug = JSON.parse((element as HTMLCanvasElement).dataset.scene4Debug ?? '{}');
     return [debug.seatedSeatIndex, debug.playerTexture];
   })).toEqual([0, 'scene4-player-sit-front']);
 
-  await waitForContext(page, 'bus-moving');
+  await page.waitForTimeout(700);
   await page.keyboard.down('Space');
   try {
     await expect.poll(async () => commuteCanvas(page).evaluate((element) => {
@@ -401,16 +447,17 @@ test('LRT is a complete alternate route from Exit B to Punggol', async ({ page }
     const debug = JSON.parse((element as HTMLCanvasElement).dataset.scene4Debug ?? '{}');
     return [debug.mode, debug.playerVisible];
   })).toEqual(['rail-interior', true]);
-  await page.getByRole('button', { name: 'Alight at Oasis' }).click();
+  await alightThroughOpenDoor(page, 'rail-wrong-stop');
   await waitForContext(page, 'rail-wrong-stop');
   await expect(page.locator('[data-rail-hearts]')).toHaveAttribute('data-rail-hearts', '2');
-  await expect(page.getByText('Returning to Kadaloor, where you boarded this train.')).toBeVisible();
-  await board(page, 'lrt-boarding');
+  await expect(page.locator('[data-last-wrong-rail-stop]')).toHaveAttribute(
+    'data-last-wrong-rail-stop',
+    /^(Oasis|Damai)$/,
+  );
   await expect(page.locator('[data-rail-stop]')).toHaveAttribute('data-rail-stop', 'Punggol', { timeout: 20_000 });
-  await page.getByRole('button', { name: 'Alight at Punggol' }).click();
-  await waitForContext(page, 'punggol-transfer');
+  await alightThroughOpenDoor(page, 'punggol-transfer');
   await playSharedRailJourney(page);
-  await expect(page.getByText('Arrived at Changi Business Park')).toBeVisible();
+  await expect(page.getByText('TCS · The Signature')).toBeVisible();
 });
 
 test('Bus 50 taps out at Punggol and never enters Kadaloor LRT', async ({ page }) => {
@@ -464,7 +511,7 @@ test('Bus 50 taps out at Punggol and never enters Kadaloor LRT', async ({ page }
   await expect(page.getByRole('button', { name: 'DONE' })).toBeVisible();
 });
 
-test('requesting a wrong Bus 50 stop keeps its doors open for 30 seconds', async ({ page }) => {
+test('requesting an intermediate Bus 50 stop gives a short dwell without promoting tap-out', async ({ page }) => {
   test.setTimeout(45_000);
   await openJourney(page);
   await page.getByRole('button', { name: 'RAISE HAND' }).click();
@@ -478,15 +525,11 @@ test('requesting a wrong Bus 50 stop keeps its doors open for 30 seconds', async
   await expect(page.locator('[data-bus-stop-requested]')).toHaveAttribute('data-bus-stop-requested', 'true');
   await expect(page.locator('[data-bus-stop]')).toHaveAttribute('data-bus-stop', 'Oasis Stn Exit B / Blk 617D', { timeout: 5_000 });
   await expect(page.locator('[data-bus-doors]')).toHaveAttribute('data-bus-doors', 'open');
-  await expect(page.locator('[data-bus-dwell-seconds]')).toHaveAttribute('data-bus-dwell-seconds', '30');
-  await page.waitForTimeout(2_000);
+  await expect(page.locator('[data-bus-dwell-seconds]')).toHaveAttribute('data-bus-dwell-seconds', '5');
+  await waitForContext(page, 'bus-stop-open');
+  await expect(page.getByLabel('Your bag')).toHaveCount(0);
+  await expect(page.getByText('Intermediate stop — remain aboard for Punggol')).toBeVisible();
+  await page.waitForTimeout(1_000);
   await expect(page.locator('[data-bus-doors]')).toHaveAttribute('data-bus-doors', 'open');
-  await page.getByRole('button', { name: 'Travel card' }).click();
-  await waitForContext(page, 'exit-item-selected');
-  await clickBusFareReader(page, 'entry');
-  await waitForContext(page, 'exit-ok');
-  await holdUntilContext(page, 'ArrowRight', 'wrong-stop');
-  await expect(page.getByText('You got down too early')).toBeVisible();
-  await waitForContext(page, 'bus-stop', 6_000);
-  await expect(page.locator('[data-bus-stop]')).toHaveAttribute('data-bus-stop', '');
+  await expect(page.locator('[data-bus-doors]')).toHaveAttribute('data-bus-doors', 'closed', { timeout: 7_000 });
 });
