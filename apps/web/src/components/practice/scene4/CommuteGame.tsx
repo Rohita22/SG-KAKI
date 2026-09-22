@@ -26,11 +26,12 @@ import { vehicleDoorPhaseFor } from './vehicleDoorPhase';
 import {
   CompletionReward,
   DebugCheckpointSelector,
-  DirectionControls,
   FareBag,
   TouchMovementControls,
 } from './CommuteControls';
 import { STATION_DESTINATIONS } from './stationTransitions';
+import { containsPoint, objectByName, propertyValue } from './tiledMap';
+import type { Scene4MapData, TiledObject } from './tiledMap';
 
 type ActiveRailStop = RailStopFact & {
   index: number;
@@ -48,6 +49,7 @@ type BusDwellState = {
 type WrongRailStop = {
   checkpoint: string;
   legId: RailLegId;
+  reason?: 'alighted' | 'too-far';
   station: string;
 };
 
@@ -90,8 +92,6 @@ const PLATFORM_DOOR_KEYS: Partial<Record<RailLegId, { closed: string; open: stri
     open: 'scene4-little-india-dtl-platform-doors-open',
   },
 };
-const DTL_LEFT_END_WALL_KEY = 'scene4-dtl-left-end-wall';
-const DTL_RIGHT_END_WALL_KEY = 'scene4-dtl-right-end-wall';
 const TRAIN_DISPLAY: Record<RailLegId, { height: number; width: number; yOffset: number }> = {
   // The LRT is a shorter two-car vehicle than the MRT consists, but its former
   // 220px body made the 322px platform passenger taller than the entire train.
@@ -183,6 +183,20 @@ const BUS_ROUTE_STOPS = [
 const BUS_TRAVEL_BETWEEN_STOPS_MS = 2600;
 const BUS_NORMAL_DWELL_MS = 3500;
 const BUS_REQUESTED_DWELL_MS = 5_000;
+// The curb-side X the bus tweens to when stopping, and the threshold used to
+// decide whether an already-passing bus can still be redirected there.
+const BUS_STOP_X = 1460;
+// How long the "wrong stop" card holds before the scene restarts.
+const BUS_WRONG_STOP_RESTART_DELAY_MS = 2400;
+// How long the rail "wrong stop" card holds before recovery (either a Punggol
+// re-decision or resuming the ride) resumes.
+const RAIL_WRONG_STOP_RECOVERY_DELAY_MS = 2200;
+// Same recovery card, but for the NEL-terminal ("rode past HarbourFront")
+// case specifically, which was originally tuned 200ms longer.
+const RAIL_TERMINAL_WRONG_STOP_RECOVERY_DELAY_MS = 2400;
+// Depth threshold: once the character reaches the curb, they should render in
+// front of the shelter furniture behind them (but always behind the bus).
+const EXTERIOR_CURB_DEPTH_THRESHOLD_Y = 520;
 const LIVE_SERVICE_MINUTE_MS = 2_500;
 const NEL_PLATFORM_DWELL_MS = 6_000;
 const NEL_NEXT_TRAIN_MS = 10_000;
@@ -204,9 +218,12 @@ const UMBRELLA_KEY = 'scene4-fare-item-umbrella';
 const WATER_BOTTLE_KEY = 'scene4-fare-item-water-bottle';
 const WALK_SPEED = 215;
 const ESCALATOR_RIDE_SCALE = 0.42;
-const ESCALATOR_BOARDING_X = 1540;
+// Keep the scripted descent centred on the black moving tread. The adjacent
+// glass divider sits roughly 150 px to the left and must not be used as the
+// character path.
+const ESCALATOR_BOARDING_X = 1005;
 const ESCALATOR_BOARDING_Y = 300;
-const ESCALATOR_EXIT_X = 1415;
+const ESCALATOR_EXIT_X = 1005;
 const ESCALATOR_EXIT_Y = 610;
 const PUNGGOL_GATE_EXIT_Y = 525;
 const PUNGGOL_GATE_LANE_TOLERANCE = 58;
@@ -242,62 +259,69 @@ type PlayerFacing = 'side' | 'front' | 'back';
 
 type SceneMode = 'exterior' | 'bus-interior' | 'rail' | 'rail-interior' | 'station';
 
-interface TiledProperty {
-  name: string;
-  value: unknown;
-}
-
-interface TiledObject {
-  id: number;
-  name: string;
-  properties?: TiledProperty[];
-  height?: number;
-  width?: number;
-  x: number;
-  y: number;
-}
-
-function propertyValue(object: TiledObject | undefined, name: string) {
-  return object?.properties?.find((property) => property.name === name)?.value;
-}
-
-interface TiledLayer {
-  name: string;
-  objects?: TiledObject[];
-}
-
-interface Scene4MapData {
-  height: number;
-  layers: TiledLayer[];
-  properties?: TiledProperty[];
-  tileheight: number;
-  tilewidth: number;
-  width: number;
-}
-
-function objectByName(
-  map: Scene4MapData,
-  layerName: string,
-  objectName: string,
-) {
-  return map.layers
-    .find((layer) => layer.name === layerName)
-    ?.objects?.find((object) => object.name === objectName);
-}
-
-function containsPoint(
-  object: TiledObject | undefined,
-  x: number,
-  y: number,
-) {
-  if (!object) return false;
-  return (
-    x >= object.x &&
-    x <= object.x + (object.width ?? 0) &&
-    y >= object.y &&
-    y <= object.y + (object.height ?? 0)
-  );
-}
+// Named InteractionContext subsets used to derive React overlay UI (below, in
+// the component). Typing each list as `readonly InteractionContext[]` (rather
+// than leaving the array literal to widen to `string[]`) makes a typo'd or
+// stale context value a compile error instead of a silent no-op, without
+// changing which contexts belong to which list.
+const BUS_INTERIOR_CONTEXTS: readonly InteractionContext[] = [
+  'choose-item',
+  'item-selected',
+  'reader',
+  'wrong-item',
+  'driver-warning',
+  'tapping',
+  'fare-success',
+  'standing',
+  'seated',
+  'bus-moving',
+  'aisle',
+  'bus-stop-open',
+  'tap-out',
+  'choose-exit-item',
+  'exit-item-selected',
+  'tap-out-warning',
+  'last-stop-reminder',
+  'exit-ok',
+  'alighting',
+  'wrong-stop',
+];
+const BUS_BOARDING_CONTEXTS: readonly InteractionContext[] = [
+  'choose-item',
+  'item-selected',
+  'reader',
+  'wrong-item',
+  'driver-warning',
+  'tapping',
+  'fare-success',
+  'standing',
+  'seated',
+];
+const BUS_BAG_VISIBLE_CONTEXTS: readonly InteractionContext[] = [
+  'choose-item',
+  'wrong-item',
+  'driver-warning',
+  'choose-exit-item',
+  'tap-out-warning',
+  'last-stop-reminder',
+];
+const CONTROLS_LOCKED_CONTEXTS: readonly InteractionContext[] = [
+  'bus-arriving',
+  'tapping',
+  'lrt-tapping',
+  'punggol-tapping',
+  'expo-tapping',
+  'expo-gates-open',
+  'punggol-escalator-riding',
+  'standing',
+  'seated',
+  'lrt-arriving',
+  'dtl-arriving',
+  'wrong-stop',
+  'rail-wrong-stop',
+  'out-of-time',
+  'complete',
+];
 
 class CommuteQuestScene extends Phaser.Scene {
   private worldWidth = 2176;
@@ -359,8 +383,9 @@ class CommuteQuestScene extends Phaser.Scene {
   private train?: Phaser.GameObjects.Image;
   private oppositeTrain?: Phaser.GameObjects.Image;
   private platformDoorLayer?: Phaser.GameObjects.Image;
-  private selectedRailDirection?: string;
   private nelTrainsReady = false;
+  private nelPunggolCoastReady = false;
+  private wrongBoardingZoneOccupied = false;
   private nelHarbourFrontCountdownMs = LIVE_SERVICE_MINUTE_MS * 2;
   private nelPunggolCoastCountdownMs = LIVE_SERVICE_MINUTE_MS * 4;
   private nelHarbourFrontBoardText?: Phaser.GameObjects.Text;
@@ -368,6 +393,7 @@ class CommuteQuestScene extends Phaser.Scene {
   private nelServiceClock?: Phaser.Time.TimerEvent;
   private nelHarbourFrontDepartureTimer?: Phaser.Time.TimerEvent;
   private dtlTrainsReady = false;
+  private dtlBukitPanjangReady = false;
   private dtlExpoCountdownMs = LIVE_SERVICE_MINUTE_MS * 2;
   private dtlBukitPanjangCountdownMs = LIVE_SERVICE_MINUTE_MS * 4;
   private dtlExpoBoardText?: Phaser.GameObjects.Text;
@@ -393,6 +419,7 @@ class CommuteQuestScene extends Phaser.Scene {
   private currentRailStopIndex = -1;
   private railTravelDirection: 1 | -1 = 1;
   private railStopAdvanceTimer?: Phaser.Time.TimerEvent;
+  private railSpeedMultiplier: 1 | 2 = 1;
   private dtlTerminalStaffTimer?: Phaser.Time.TimerEvent;
   private mrtStaff?: Phaser.GameObjects.Image;
   private mrtStaffBubble?: Phaser.GameObjects.Container;
@@ -409,8 +436,6 @@ class CommuteQuestScene extends Phaser.Scene {
   private openedStationGateLaneX?: number;
   private openedStationGateEntryY?: number;
   private stationGateMessage?: Phaser.GameObjects.Text;
-  private stationPortalCue?: Phaser.GameObjects.Container;
-  private railDoorCue?: Phaser.GameObjects.Container;
   private reducedMotion = false;
   private debugGeometryVisible = false;
   private debugGraphics?: Phaser.GameObjects.Graphics;
@@ -681,21 +706,19 @@ class CommuteQuestScene extends Phaser.Scene {
 
     this.game.events.on('commute:raise-hand', this.startBusArrival, this);
     this.game.events.on('commute:select-item', this.selectFareItem, this);
-    this.game.events.on('commute:choose-direction', this.chooseDirection, this);
     this.game.events.on('commute:board-train', this.boardTrain, this);
     this.game.events.on('commute:request-bus-stop', this.requestBusStop, this);
     this.game.events.on('commute:nudge', this.nudgePlayer, this);
-    this.game.events.on('commute:interact', this.activateNearestInteraction, this);
     this.game.events.on('commute:reduced-motion', this.setReducedMotion, this);
+    this.game.events.on('commute:set-rail-speed', this.setRailSpeed, this);
     this.events.once('shutdown', () => {
       this.game.events.off('commute:raise-hand', this.startBusArrival, this);
       this.game.events.off('commute:select-item', this.selectFareItem, this);
-      this.game.events.off('commute:choose-direction', this.chooseDirection, this);
       this.game.events.off('commute:board-train', this.boardTrain, this);
       this.game.events.off('commute:request-bus-stop', this.requestBusStop, this);
       this.game.events.off('commute:nudge', this.nudgePlayer, this);
-      this.game.events.off('commute:interact', this.activateNearestInteraction, this);
       this.game.events.off('commute:reduced-motion', this.setReducedMotion, this);
+      this.game.events.off('commute:set-rail-speed', this.setRailSpeed, this);
     });
     this.time.delayedCall(900, this.startPassingBus, [], this);
     this.game.events.emit('commute:ready');
@@ -744,6 +767,7 @@ class CommuteQuestScene extends Phaser.Scene {
     this.railTravelDirection = 1;
     this.railStopAdvanceTimer?.remove(false);
     this.railStopAdvanceTimer = undefined;
+    this.railSpeedMultiplier = 1;
     this.wrongRailStopInProgress = false;
     this.railHearts = 3;
     this.journeyComplete = false;
@@ -861,6 +885,10 @@ class CommuteQuestScene extends Phaser.Scene {
       .setVisible(this.player.visible)
       .setAlpha(this.seatedSeatIndex === undefined ? 0.24 : 0.14);
     this.updateSeatAffordances();
+    // Only ever built in DEV: this diagnostic snapshot is consumed by dev
+    // tooling and the e2e suite, and its per-frame JSON.stringify cost must
+    // not ship to production players.
+    if (import.meta.env.DEV) {
     this.game.canvas.dataset.scene4Debug = JSON.stringify({
       backgroundHeight: this.background?.displayHeight,
       backgroundTexture: this.background?.texture.key,
@@ -975,6 +1003,7 @@ class CommuteQuestScene extends Phaser.Scene {
           : null,
       },
     });
+    }
 
     if (this.seatedSeatIndex !== undefined) {
       // Keep the dedicated seated artwork active while no movement input has
@@ -1031,7 +1060,7 @@ class CommuteQuestScene extends Phaser.Scene {
     // Shelter furniture remains in front of the character at the rear of the
     // pavement. At the curb the character comes forward, but the bus always
     // remains the topmost physical object.
-    this.player.setDepth(this.player.y >= 520 ? 600 : 20);
+    this.player.setDepth(this.player.y >= EXTERIOR_CURB_DEPTH_THRESHOLD_Y ? 600 : 20);
 
     if (containsPoint(this.stairZone, this.player.x, this.player.y) && !this.transitionStarted) {
       this.transitionStarted = true;
@@ -1173,7 +1202,7 @@ class CommuteQuestScene extends Phaser.Scene {
 
     // A bus that has not yet passed the stop responds immediately. If it is
     // already gone, the raised hand remains remembered and the next bus stops.
-    if (this.busPassing && this.bus.x > 1460) {
+    if (this.busPassing && this.bus.x > BUS_STOP_X) {
       this.routeCurrentBusToStop();
     } else if (!this.busPassing) {
       this.startPassingBus();
@@ -1216,11 +1245,11 @@ class CommuteQuestScene extends Phaser.Scene {
     this.busTween?.stop();
     this.busArriving = true;
     this.busPassing = true;
-    const distance = Math.max(0, this.bus.x - 1460);
+    const distance = Math.max(0, this.bus.x - BUS_STOP_X);
 
     this.busTween = this.tweens.add({
       targets: this.bus,
-      x: 1460,
+      x: BUS_STOP_X,
       duration: Phaser.Math.Clamp(distance * 1.8, 650, 2500),
       ease: 'Cubic.Out',
       onComplete: () => {
@@ -1313,7 +1342,10 @@ class CommuteQuestScene extends Phaser.Scene {
 
   private selectFareItem(kind: FareItemKind) {
     const choosingEntryItem = !this.fareTapped;
-    const choosingExitItem = this.fareTapped && this.atDestination && this.busDoorsOpen && !this.fareTappedOut;
+    // Not gated on atDestination: a rider who boarded past their stop must be
+    // able to pick the travel card and tap out at ANY open-door stop so the
+    // wrong-stop recovery flow below can actually trigger.
+    const choosingExitItem = this.fareTapped && this.busDoorsOpen && !this.fareTappedOut;
     if (
       this.mode !== 'bus-interior' ||
       this.tapInProgress ||
@@ -1801,7 +1833,7 @@ class CommuteQuestScene extends Phaser.Scene {
     this.player.setVelocity(0, 0).anims.stop();
     this.setContext('wrong-stop');
     this.game.events.emit('commute:bus-dwell', undefined);
-    this.time.delayedCall(2400, () => this.scene.restart());
+    this.time.delayedCall(BUS_WRONG_STOP_RESTART_DELAY_MS, () => this.scene.restart());
   }
 
   private startBusJourney() {
@@ -2115,73 +2147,6 @@ class CommuteQuestScene extends Phaser.Scene {
     this.transitionAwaitingRelease = true;
     this.transitionReleaseGuardUntil = this.time.now + minimumGuardMs;
     this.player?.setVelocity(0, 0);
-  }
-
-  private clearStationPortalCue() {
-    if (!this.stationPortalCue) return;
-    this.tweens.killTweensOf(this.stationPortalCue);
-    this.stationPortalCue.destroy(true);
-    this.stationPortalCue = undefined;
-  }
-
-  private showStationPortalCue(zone: TiledObject | undefined, label = 'GO') {
-    this.clearStationPortalCue();
-    if (!zone) return;
-    const x = zone.x + (zone.width ?? 0) / 2;
-    const y = zone.y - 24;
-    const badge = this.add.circle(0, 0, 29, 0xf7b928, 0.94).setStrokeStyle(4, 0xffffff, 0.9);
-    const text = this.add.text(0, 0, `${label} ↓`, {
-      color: '#12233f',
-      fontFamily: 'Arial, sans-serif',
-      fontSize: '15px',
-      fontStyle: 'bold',
-    }).setOrigin(0.5);
-    this.stationPortalCue = this.add.container(x, y, [badge, text]).setDepth(70);
-    this.tweens.add({
-      targets: this.stationPortalCue,
-      y: y + 9,
-      duration: 620,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.InOut',
-    });
-  }
-
-  private clearRailDoorCue() {
-    if (!this.railDoorCue) return;
-    this.tweens.killTweensOf(this.railDoorCue);
-    this.railDoorCue.destroy(true);
-    this.railDoorCue = undefined;
-  }
-
-  private showRailDoorCue(zone: TiledObject | { height: number; width: number; x: number; y: number } | undefined, label: string) {
-    this.clearRailDoorCue();
-    if (!zone) return;
-    const width = zone.width ?? 0;
-    const height = zone.height ?? 0;
-    const frame = this.add.rectangle(0, 0, width, height, 0xf7b928, 0.08)
-      .setStrokeStyle(5, 0xf7b928, 0.95);
-    const text = this.add.text(0, -height / 2 - 22, label, {
-      backgroundColor: '#12233f',
-      color: '#ffffff',
-      fontFamily: 'Arial, sans-serif',
-      fontSize: '17px',
-      fontStyle: 'bold',
-      padding: { x: 11, y: 6 },
-    }).setOrigin(0.5);
-    this.railDoorCue = this.add.container(
-      zone.x + width / 2,
-      zone.y + height / 2,
-      [frame, text],
-    ).setDepth(55);
-    this.tweens.add({ targets: frame, alpha: 0.42, duration: 500, yoyo: true, repeat: -1 });
-  }
-
-  private showPlatformBoardingCue() {
-    const boardingZone = this.railMap?.layers
-      .find((layer) => layer.name === 'Interactions')
-      ?.objects?.find((object) => propertyValue(object, 'action') === 'board');
-    this.showRailDoorCue(boardingZone, 'BOARD HERE ↑');
   }
 
   private createStationFareGates(stageId: StationStageId) {
@@ -2533,8 +2498,6 @@ class CommuteQuestScene extends Phaser.Scene {
     if (stageId === 'kadaloor-lrt-concourse') this.game.events.emit('commute:branch', 'lrt');
     this.stationStage = stageId;
     this.beginStageTransition();
-    this.clearStationPortalCue();
-    this.clearRailDoorCue();
     this.railLeg = undefined;
     this.railDoorsOpen = false;
     this.busMoving = false;
@@ -2591,18 +2554,6 @@ class CommuteQuestScene extends Phaser.Scene {
         this.add.image(0, 0, stage.background).setOrigin(0, 0)
           .setDisplaySize(RAIL_WORLD_WIDTH, RAIL_WORLD_HEIGHT).setDepth(0),
       );
-      if (stageId === 'punggol-nel-escalator') {
-        // Repaint only the near glass balustrade above the player. The source
-        // panorama is a single layer, so this crop supplies the missing
-        // foreground occlusion while the player crosses the upper landing.
-        this.railObjects.push(
-          this.add.image(0, 0, stage.background)
-            .setOrigin(0, 0)
-            .setDisplaySize(RAIL_WORLD_WIDTH, RAIL_WORLD_HEIGHT)
-            .setCrop(0, 250, 1120, 215)
-            .setDepth(61),
-        );
-      }
       const spawnName = stageId === 'punggol-interchange'
         ? this.lrtGateTapped ? 'from-lrt' : 'from-bus'
         : 'player-start';
@@ -2618,11 +2569,6 @@ class CommuteQuestScene extends Phaser.Scene {
         .setDepth(60).setFlipX(false).setVisible(true).setVelocity(0, 0);
       this.createStationFareGates(stageId);
       this.createOfficeWayfinding(stageId);
-      const routeCue = stageId === 'punggol-nel-escalator'
-        ? objectByName(map, 'Interactions', 'Escalator entry')
-        : this.stationPortal;
-      this.showStationPortalCue(routeCue, stageId === 'punggol-nel-escalator' ? 'DOWN' : 'GO');
-
       this.setContext(
         stageId === 'punggol-interchange' && this.lrtGateTapped
           ? 'punggol-transfer'
@@ -2636,29 +2582,56 @@ class CommuteQuestScene extends Phaser.Scene {
   private updateRail() {
     if (!this.player || this.inputLocked) return;
 
-    if (
-      this.railLeg &&
-      ['punggol-nel', 'little-india-dtl'].includes(this.railLeg) &&
-      !this.selectedRailDirection
-    ) {
-      const directionZones = this.railMap?.layers
-        .find((layer) => layer.name === 'Interactions')
-        ?.objects?.filter((object) => propertyValue(object, 'action') === 'choose-direction') ?? [];
-      const selectedZone = directionZones.find((zone) => containsPoint(zone, this.player!.x, this.player!.y));
-      if (selectedZone) {
-        this.chooseDirection(String(propertyValue(selectedZone, 'direction') ?? ''));
+    const boardingZones = this.railMap?.layers
+      .find((layer) => layer.name === 'Interactions')
+      ?.objects?.filter((object) => propertyValue(object, 'action') === 'board') ?? [];
+
+    if (this.railLeg === 'punggol-nel') {
+      const activeZone = boardingZones.find((zone) => containsPoint(zone, this.player!.x, this.player!.y));
+      const direction = String(propertyValue(activeZone, 'direction') ?? '');
+
+      if (direction === 'Punggol Coast' && this.nelPunggolCoastReady) {
+        if (!this.wrongBoardingZoneOccupied) {
+          this.wrongBoardingZoneOccupied = true;
+          this.wrongDirectionUntil = this.time.now + 2400;
+          this.player.setVelocity(0, 0);
+          this.setContext('nel-wrong-direction');
+        }
         return;
       }
-      if (this.time.now >= this.wrongDirectionUntil) {
-        if (this.lastContext === 'nel-wrong-direction') this.setContext('nel-transfer');
-        if (this.lastContext === 'dtl-wrong-direction') this.setContext('dtl-transfer');
+
+      if (direction !== 'Punggol Coast') this.wrongBoardingZoneOccupied = false;
+      if (this.lastContext === 'nel-wrong-direction' && this.time.now >= this.wrongDirectionUntil) {
+        this.setContext(this.railDoorsOpen ? 'nel-boarding' : 'nel-transfer');
       }
+      if (direction === 'HarbourFront' && this.railDoorsOpen) this.boardTrain(activeZone);
+      return;
+    }
+
+    if (this.railLeg === 'little-india-dtl') {
+      const activeZone = boardingZones.find((zone) => containsPoint(zone, this.player!.x, this.player!.y));
+      const direction = String(propertyValue(activeZone, 'direction') ?? '');
+
+      if (direction === 'Bukit Panjang' && this.dtlBukitPanjangReady) {
+        if (!this.wrongBoardingZoneOccupied) {
+          this.wrongBoardingZoneOccupied = true;
+          this.wrongDirectionUntil = this.time.now + 2400;
+          this.player.setVelocity(0, 0);
+          this.setContext('dtl-wrong-direction');
+        }
+        return;
+      }
+
+      if (direction !== 'Bukit Panjang') this.wrongBoardingZoneOccupied = false;
+      if (this.lastContext === 'dtl-wrong-direction' && this.time.now >= this.wrongDirectionUntil) {
+        this.setContext(this.railDoorsOpen ? 'dtl-boarding' : 'dtl-transfer');
+      }
+      if (direction === 'Expo' && this.railDoorsOpen) this.boardTrain(activeZone);
+      return;
     }
 
     if (!this.railDoorsOpen) return;
-    const boardingZone = this.railMap?.layers
-      .find((layer) => layer.name === 'Interactions')
-      ?.objects?.find((object) => propertyValue(object, 'action') === 'board');
+    const boardingZone = boardingZones[0];
     if (containsPoint(boardingZone, this.player.x, this.player.y)) {
       this.boardTrain();
     }
@@ -2684,8 +2657,6 @@ class CommuteQuestScene extends Phaser.Scene {
     this.railStopAdvanceTimer = undefined;
     this.wrongRailStopInProgress = false;
     this.beginStageTransition();
-    this.clearStationPortalCue();
-    this.clearRailDoorCue();
     this.busMoving = false;
     this.background?.setVisible(false);
     this.bus?.setVisible(false);
@@ -2713,9 +2684,11 @@ class CommuteQuestScene extends Phaser.Scene {
     this.oppositeTrain?.destroy();
     this.oppositeTrain = undefined;
     this.platformDoorLayer = undefined;
-    this.selectedRailDirection = undefined;
     this.nelTrainsReady = false;
+    this.nelPunggolCoastReady = false;
+    this.wrongBoardingZoneOccupied = false;
     this.dtlTrainsReady = false;
+    this.dtlBukitPanjangReady = false;
     this.cameras.main.fadeOut(180, 18, 27, 42);
 
     this.time.delayedCall(200, () => {
@@ -2730,7 +2703,7 @@ class CommuteQuestScene extends Phaser.Scene {
       this.worldWidth = railWidth;
       this.physics.world.setBounds(cameraFrame?.x ?? 0, cameraFrame?.y ?? 0, railWidth, railHeight);
       this.cameras.main.setBounds(cameraFrame?.x ?? 0, cameraFrame?.y ?? 0, railWidth, railHeight).setScroll(0, 0);
-      this.drawRailPlatform(legId, railMap);
+      this.drawRailPlatform(legId);
       this.resetPlayerToWalkingPose('station');
       this.player
         ?.setPosition(playerSpawn?.x ?? 220, playerSpawn?.y ?? 660)
@@ -2754,13 +2727,10 @@ class CommuteQuestScene extends Phaser.Scene {
     });
   }
 
-  private drawRailPlatform(legId: RailLegId, map: Scene4MapData) {
+  private drawRailPlatform(legId: RailLegId) {
     const leg = SCENE4_ROUTE.find((candidate) => candidate.id === legId)!;
     const accent = leg.accent;
     const isLrt = legId === 'kadaloor-lrt';
-    const boardingZone = map.layers
-      .find((layer) => layer.name === 'Interactions')
-      ?.objects?.find((object) => propertyValue(object, 'action') === 'board');
     const add = <T extends Phaser.GameObjects.GameObject>(object: T) => {
       this.railObjects.push(object);
       return object;
@@ -2784,19 +2754,6 @@ class CommuteQuestScene extends Phaser.Scene {
           .setDepth(30),
       );
     }
-
-    const commuterPositions = isLrt ? [970, 1210] : [880, 1280];
-    commuterPositions.forEach((x, index) => {
-      add(
-        this.add.image(x, 545 + index * 8, MRT_STAFF_KEY)
-          .setOrigin(0.5, 1)
-          .setScale(isLrt ? 0.14 : 0.13)
-          .setFlipX(index % 2 === 1)
-          .setTint(index === 0 ? 0xb7c6d3 : 0xd8c4ad)
-          .setAlpha(0.72)
-          .setDepth(35),
-      );
-    });
 
     if (legId === 'punggol-nel') {
       // Use the two electronic panels already built into the station artwork.
@@ -2845,26 +2802,6 @@ class CommuteQuestScene extends Phaser.Scene {
     }
 
     if (legId === 'little-india-dtl') {
-      const closedDoorSource = this.textures
-        .get(PLATFORM_DOOR_KEYS['little-india-dtl']!.closed)
-        .getSourceImage() as CanvasImageSource;
-      if (!this.textures.exists(DTL_LEFT_END_WALL_KEY)) {
-        const leftWall = this.textures.createCanvas(DTL_LEFT_END_WALL_KEY, 168, 282);
-        if (leftWall) {
-          leftWall.context.drawImage(closedDoorSource, 530, 210, 168, 282, 0, 0, 168, 282);
-          leftWall.refresh();
-        }
-      }
-      if (!this.textures.exists(DTL_RIGHT_END_WALL_KEY)) {
-        const rightWall = this.textures.createCanvas(DTL_RIGHT_END_WALL_KEY, 220, 282);
-        if (rightWall) {
-          rightWall.context.drawImage(closedDoorSource, 1353, 210, 118, 282, 0, 0, 220, 282);
-          rightWall.refresh();
-        }
-      }
-      add(this.add.image(0, 210, DTL_LEFT_END_WALL_KEY).setOrigin(0, 0).setDepth(31));
-      add(this.add.image(1956, 210, DTL_RIGHT_END_WALL_KEY).setOrigin(0, 0).setDepth(31));
-
       const addDtlBoard = (
         x: number,
         platform: string,
@@ -2936,52 +2873,6 @@ class CommuteQuestScene extends Phaser.Scene {
         .setOrigin(1, 0)
         .setDepth(41),
     );
-    add(
-      this.add
-        .text(
-          (boardingZone?.x ?? 530) + (boardingZone?.width ?? 220) / 2,
-          655,
-          'BOARD HERE',
-          {
-          backgroundColor: '#14283ad9',
-          color: '#ffffff',
-          fontFamily: 'Arial, sans-serif',
-          fontSize: '14px',
-          fontStyle: 'bold',
-          padding: { x: 12, y: 7 },
-        })
-        .setOrigin(0.5)
-        .setDepth(42),
-    );
-  }
-
-  private chooseDirection(choice: string) {
-    if (!this.railLeg || !['punggol-nel', 'little-india-dtl'].includes(this.railLeg)) return;
-    const directionChoice = objectByName(
-      this.railMap!,
-      'Interactions',
-      'Platform direction choice',
-    );
-    if (propertyValue(directionChoice, 'correctDirection') !== choice) {
-      this.wrongDirectionUntil = this.time.now + 1600;
-      this.setContext(
-        this.railLeg === 'punggol-nel'
-          ? 'nel-wrong-direction'
-          : 'dtl-wrong-direction',
-      );
-      return;
-    }
-    if (this.railLeg === 'punggol-nel') {
-      this.selectedRailDirection = choice;
-      this.inputLocked = false;
-      this.setContext('nel-arriving');
-      if (this.nelTrainsReady) this.openSelectedNelTrain();
-      return;
-    }
-    this.selectedRailDirection = choice;
-    this.inputLocked = false;
-    this.setContext('dtl-arriving');
-    if (this.dtlTrainsReady) this.openSelectedDtlTrain();
   }
 
   private formatLiveNelWait(countdownMs: number, atPlatform: boolean) {
@@ -3066,7 +2957,7 @@ class CommuteQuestScene extends Phaser.Scene {
         arrivingTrain.setTexture(TRAIN_OPEN_KEYS['punggol-nel']);
         this.setPlatformDoors(true, 'punggol-nel');
         this.updateLiveNelBoard();
-        if (this.selectedRailDirection === 'HarbourFront') this.openSelectedNelTrain();
+        this.openSelectedNelTrain();
         this.nelHarbourFrontDepartureTimer?.remove(false);
         this.nelHarbourFrontDepartureTimer = this.time.delayedCall(
           NEL_PLATFORM_DWELL_MS,
@@ -3112,7 +3003,6 @@ class CommuteQuestScene extends Phaser.Scene {
     this.enterRailLeg(legId);
     if (legId === 'kadaloor-lrt') return;
     this.time.delayedCall(360, () => {
-      this.selectedRailDirection = legId === 'punggol-nel' ? 'HarbourFront' : 'Expo';
       this.stopNelServiceClock();
       this.stopDtlServiceClock();
       if (legId === 'punggol-nel') this.arriveLiveHarbourFrontTrain();
@@ -3196,9 +3086,9 @@ class CommuteQuestScene extends Phaser.Scene {
     this.nelHarbourFrontDepartureTimer = undefined;
     this.nelTrainsReady = false;
     this.railDoorsOpen = false;
-    this.setPlatformDoors(false, 'punggol-nel');
+    if (!this.nelPunggolCoastReady) this.setPlatformDoors(false, 'punggol-nel');
     departingTrain.setTexture(TRAIN_KEYS['punggol-nel']);
-    if (this.selectedRailDirection === 'HarbourFront') this.setContext('nel-arriving');
+    if (this.lastContext !== 'nel-wrong-direction') this.setContext('nel-transfer');
 
     this.tweens.add({
       targets: departingTrain,
@@ -3240,9 +3130,15 @@ class CommuteQuestScene extends Phaser.Scene {
       duration: 750,
       ease: 'Cubic.Out',
       onComplete: () => {
+        this.nelPunggolCoastReady = true;
+        arrivingTrain.setTexture(TRAIN_OPEN_KEYS['punggol-nel']);
+        this.setPlatformDoors(true, 'punggol-nel');
         this.updateLiveNelBoard();
         this.time.delayedCall(NEL_PLATFORM_DWELL_MS, () => {
           if (this.oppositeTrain !== arrivingTrain || this.railLeg !== 'punggol-nel') return;
+          this.nelPunggolCoastReady = false;
+          arrivingTrain.setTexture(TRAIN_KEYS['punggol-nel']);
+          if (!this.nelTrainsReady) this.setPlatformDoors(false, 'punggol-nel');
           this.tweens.add({
             targets: arrivingTrain,
             x: oppositeExit?.x ?? 1220,
@@ -3280,7 +3176,6 @@ class CommuteQuestScene extends Phaser.Scene {
       this.setPlatformDoors(true);
       this.railDoorsOpen = true;
       this.inputLocked = false;
-      this.showPlatformBoardingCue();
       this.setContext('nel-boarding');
     });
   }
@@ -3341,8 +3236,10 @@ class CommuteQuestScene extends Phaser.Scene {
         this.dtlTrainsReady = true;
         arrivingTrain.setTexture(TRAIN_OPEN_KEYS['little-india-dtl']);
         this.setPlatformDoors(true, 'little-india-dtl');
+        this.railDoorsOpen = true;
+        this.inputLocked = false;
+        if (this.lastContext !== 'dtl-wrong-direction') this.setContext('dtl-boarding');
         this.updateLiveDtlBoard();
-        if (this.selectedRailDirection === 'Expo') this.openSelectedDtlTrain();
         this.dtlExpoDepartureTimer?.remove(false);
         this.dtlExpoDepartureTimer = this.time.delayedCall(
           NEL_PLATFORM_DWELL_MS,
@@ -3362,9 +3259,9 @@ class CommuteQuestScene extends Phaser.Scene {
     this.dtlExpoDepartureTimer = undefined;
     this.dtlTrainsReady = false;
     this.railDoorsOpen = false;
-    this.setPlatformDoors(false, 'little-india-dtl');
+    if (!this.dtlBukitPanjangReady) this.setPlatformDoors(false, 'little-india-dtl');
     departingTrain.setTexture(TRAIN_KEYS['little-india-dtl']);
-    if (this.selectedRailDirection === 'Expo') this.setContext('dtl-arriving');
+    if (this.lastContext !== 'dtl-wrong-direction') this.setContext('dtl-transfer');
     this.tweens.add({
       targets: departingTrain,
       x: trainExit?.x ?? 900,
@@ -3397,11 +3294,15 @@ class CommuteQuestScene extends Phaser.Scene {
       duration: 800,
       ease: 'Cubic.Out',
       onComplete: () => {
+        this.dtlBukitPanjangReady = true;
         arrivingTrain.setTexture(TRAIN_OPEN_KEYS['little-india-dtl']);
+        this.setPlatformDoors(true, 'little-india-dtl');
         this.updateLiveDtlBoard();
         this.time.delayedCall(NEL_PLATFORM_DWELL_MS, () => {
           if (this.oppositeTrain !== arrivingTrain || this.railLeg !== 'little-india-dtl') return;
+          this.dtlBukitPanjangReady = false;
           arrivingTrain.setTexture(TRAIN_KEYS['little-india-dtl']);
+          if (!this.dtlTrainsReady) this.setPlatformDoors(false, 'little-india-dtl');
           this.tweens.add({
             targets: arrivingTrain,
             x: 1450,
@@ -3417,19 +3318,6 @@ class CommuteQuestScene extends Phaser.Scene {
         });
       },
     });
-  }
-
-  private openSelectedDtlTrain() {
-    if (
-      this.railLeg !== 'little-india-dtl' ||
-      !this.train ||
-      !this.dtlTrainsReady ||
-      this.railDoorsOpen
-    ) return;
-    this.railDoorsOpen = true;
-    this.inputLocked = false;
-    this.showPlatformBoardingCue();
-    this.setContext('dtl-boarding');
   }
 
   private stopDtlServiceClock() {
@@ -3489,7 +3377,6 @@ class CommuteQuestScene extends Phaser.Scene {
           this.inputLocked = false;
           train.setTexture(TRAIN_OPEN_KEYS[this.railLeg!]);
           this.setPlatformDoors(true);
-          this.showPlatformBoardingCue();
           this.setContext(
             isLrt ? 'lrt-boarding' : this.railLeg === 'punggol-nel' ? 'nel-boarding' : 'dtl-boarding',
           );
@@ -3498,10 +3385,9 @@ class CommuteQuestScene extends Phaser.Scene {
     });
   }
 
-  private boardTrain() {
+  private boardTrain(boardingZoneOverride?: TiledObject) {
     if (!this.railLeg || !this.train || !this.railDoorsOpen || this.journeyComplete) return;
     const currentLeg = this.railLeg;
-    this.clearRailDoorCue();
     if (currentLeg === 'punggol-nel') {
       this.nelHarbourFrontDepartureTimer?.remove(false);
       this.nelHarbourFrontDepartureTimer = undefined;
@@ -3511,7 +3397,7 @@ class CommuteQuestScene extends Phaser.Scene {
       this.dtlExpoDepartureTimer = undefined;
     }
     const trainExit = objectByName(this.railMap!, 'Spawns', 'train-exit');
-    const boardingZone = this.railMap?.layers
+    const boardingZone = boardingZoneOverride ?? this.railMap?.layers
       .find((layer) => layer.name === 'Interactions')
       ?.objects?.find((object) => propertyValue(object, 'action') === 'board');
     this.inputLocked = true;
@@ -3571,7 +3457,6 @@ class CommuteQuestScene extends Phaser.Scene {
     this.dtlExpoBoardText = undefined;
     this.dtlBukitPanjangBoardText = undefined;
     this.beginStageTransition();
-    this.clearRailDoorCue();
     this.background?.setVisible(false);
     this.bus?.setVisible(false);
     this.exteriorObjects.forEach((object) => object.destroy());
@@ -3675,12 +3560,29 @@ class CommuteQuestScene extends Phaser.Scene {
     this.cameraFlash(90, 120, 190, 220);
 
     const leg = SCENE4_ROUTE.find((candidate) => candidate.id === legId);
-    if (stops[index].station === leg?.alightAt) {
-      this.showRailDoorCue(RAIL_EXIT_ZONES[0], `EXIT FOR ${stops[index].station.toUpperCase()} ↑`);
-    } else {
-      this.clearRailDoorCue();
-    }
     const isDtl = legId === 'little-india-dtl';
+    const isHarbourFrontTerminal = legId === 'punggol-nel' && stops[index].station === 'HarbourFront';
+    if (isHarbourFrontTerminal) {
+      // HarbourFront is the end of this service. Reversing the simulated train
+      // makes it look as though staying onboard is valid, so end the run here
+      // and return the player to the original platform decision instead.
+      this.wrongRailStopInProgress = true;
+      this.inputLocked = true;
+      this.player?.setVelocity(0, 0);
+      this.game.events.emit('commute:lose-heart', {
+        checkpoint: 'Punggol MRT',
+        legId,
+        reason: 'too-far',
+        station: stops[index].station,
+      } satisfies WrongRailStop);
+      this.setContext('rail-wrong-stop');
+      this.scheduleRailAdvance(RAIL_TERMINAL_WRONG_STOP_RECOVERY_DELAY_MS, () => {
+        if (this.railLeg !== legId || this.mode !== 'rail-interior') return;
+        this.wrongRailStopInProgress = false;
+        this.enterRailLeg('punggol-nel');
+      });
+      return;
+    }
     const isExpoTerminal = isDtl && stops[index].station === 'Expo';
     if (isExpoTerminal) {
       // Expo is the end of the Downtown Line journey in this game. Keep the
@@ -3698,15 +3600,14 @@ class CommuteQuestScene extends Phaser.Scene {
       : stops[index].station === leg?.alightAt
       ? RAIL_TARGET_STOP_DWELL_MS
       : RAIL_STOP_DWELL_MS;
-    this.railStopAdvanceTimer = this.time.delayedCall(dwellMs, () => {
+    this.scheduleRailAdvance(dwellMs, () => {
       if (this.railLeg !== legId || this.mode !== 'rail-interior') return;
       this.railInteriorDoorsOpen = false;
       this.setRailInteriorDoorVisualState(false);
-      this.clearRailDoorCue();
       this.game.events.emit('commute:rail-interior-doors', false);
       this.game.events.emit('commute:rail-stop', undefined);
       this.cameraShake(120, 0.001);
-      this.railStopAdvanceTimer = this.time.delayedCall(
+      this.scheduleRailAdvance(
         RAIL_BETWEEN_STOPS_MS,
         () => this.playRailStopSequence(
           legId,
@@ -3801,6 +3702,28 @@ class CommuteQuestScene extends Phaser.Scene {
     this.mrtStaff = undefined;
   }
 
+  // Creates a rail-advance timer (dwell countdown, between-stops gap, or
+  // wrong-stop recovery delay) and applies the rider's chosen speed to it.
+  // Using the timer's own `timeScale` (rather than the scene-wide clock)
+  // keeps the speedup scoped to rail travel and lets it be changed live: a
+  // TimerEvent re-reads its timeScale every frame, so toggling mid-countdown
+  // immediately speeds up or slows down the time remaining.
+  private scheduleRailAdvance(delay: number, callback: () => void) {
+    const timer = this.time.delayedCall(delay, callback);
+    timer.timeScale = this.railSpeedMultiplier;
+    this.railStopAdvanceTimer = timer;
+    return timer;
+  }
+
+  private setRailSpeed(multiplier: 1 | 2) {
+    if (this.railSpeedMultiplier === multiplier) return;
+    this.railSpeedMultiplier = multiplier;
+    if (this.railStopAdvanceTimer) {
+      this.railStopAdvanceTimer.timeScale = multiplier;
+    }
+    this.game.events.emit('commute:rail-speed', multiplier);
+  }
+
   private nextRailStopIndex(index: number, total: number) {
     const next = nextBouncingStopIndex(index, total, this.railTravelDirection);
     this.railTravelDirection = next.direction;
@@ -3842,8 +3765,9 @@ class CommuteQuestScene extends Phaser.Scene {
     this.wrongRailStopInProgress = true;
     this.railHearts = Math.max(0, this.railHearts - 1);
     this.game.events.emit('commute:lose-heart', {
-      checkpoint: stop.station,
+      checkpoint: legId === 'punggol-nel' ? 'Punggol MRT' : stop.station,
       legId,
+      reason: 'alighted',
       station: stop.station,
     } satisfies WrongRailStop);
     if (this.railHearts === 0) {
@@ -3851,23 +3775,28 @@ class CommuteQuestScene extends Phaser.Scene {
       return;
     }
     this.setContext('rail-wrong-stop');
-    this.railStopAdvanceTimer = this.time.delayedCall(2200, () => {
+    this.scheduleRailAdvance(RAIL_WRONG_STOP_RECOVERY_DELAY_MS, () => {
       if (this.railLeg !== legId || this.mode !== 'rail-interior') return;
       this.wrongRailStopInProgress = false;
+      if (legId === 'punggol-nel') {
+        // A wrong NEL alighting choice restarts the decision at Punggol. The
+        // player returns to the island platform and can physically approach
+        // either direction again instead of being placed back in the carriage.
+        this.enterRailLeg('punggol-nel');
+        return;
+      }
       this.armStageInputRelease();
       this.setContext(
         legId === 'kadaloor-lrt'
           ? 'lrt-riding'
-          : legId === 'punggol-nel'
-            ? 'nel-riding'
-            : 'dtl-riding',
+          : 'dtl-riding',
       );
       // The passenger has stepped back into the same carriage at this station.
       // Move them just clear of the exit trigger so the next stop does not
       // automatically count as another alight attempt.
       this.player?.setPosition(this.player.x, 680).setVelocity(0, 0);
       this.cameraShake(120, 0.001);
-      this.railStopAdvanceTimer = this.time.delayedCall(
+      this.scheduleRailAdvance(
         RAIL_BETWEEN_STOPS_MS,
         () => this.playRailStopSequence(
           legId,
@@ -3963,7 +3892,9 @@ class CommuteQuestScene extends Phaser.Scene {
         this.standUpFromBusSeat();
         return;
       }
-      const reader = this.fareTapped && this.atDestination ? this.exitFareReader : this.entryFareReader;
+      // Route to the exit reader whenever doors are open post-tap-in, not only
+      // at the correct destination, so an early exit attempt is reachable.
+      const reader = this.fareTapped && this.busDoorsOpen ? this.exitFareReader : this.entryFareReader;
       if (reader && Math.abs(this.player.x - reader.x) <= 220) {
         this.handleBusFareReaderClick(reader);
         return;
@@ -4197,6 +4128,7 @@ export function CommuteGame({
   const [busTaskPopupVisible, setBusTaskPopupVisible] = useState(false);
   const [mrtMapOpen, setMrtMapOpen] = useState(false);
   const [journeyBranch, setJourneyBranch] = useState<'bus' | 'lrt'>();
+  const [railSpeed, setRailSpeed] = useState<1 | 2>(1);
 
   useEffect(() => {
     const repeatsUntilActionIsComplete =
@@ -4294,12 +4226,15 @@ export function CommuteGame({
     };
     const handleLoseHeart = (stop: WrongRailStop) => {
       setWrongRailStop(stop);
-      setRailHearts((current) => Math.max(0, current - 1));
+      if (stop.reason !== 'too-far') {
+        setRailHearts((current) => Math.max(0, current - 1));
+      }
     };
     const handleFareItemStored = () => {
       setSelectedItem(undefined);
     };
     const handleBranch = (branch: 'bus' | 'lrt') => setJourneyBranch(branch);
+    const handleRailSpeed = (multiplier: 1 | 2) => setRailSpeed(multiplier);
     const handleJourneyReset = () => {
       setContext('walking');
       setRaisedHand(false);
@@ -4313,6 +4248,7 @@ export function CommuteGame({
       setRailHearts(3);
       setWrongRailStop(undefined);
       setJourneyBranch(undefined);
+      setRailSpeed(1);
     };
     const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     const syncReducedMotion = () => {
@@ -4329,6 +4265,7 @@ export function CommuteGame({
     game.events.on('commute:lose-heart', handleLoseHeart);
     game.events.on('commute:fare-item-stored', handleFareItemStored);
     game.events.on('commute:branch', handleBranch);
+    game.events.on('commute:rail-speed', handleRailSpeed);
     game.events.on('commute:journey-reset', handleJourneyReset);
     game.events.on('commute:ready', syncReducedMotion);
     reducedMotionQuery.addEventListener('change', syncReducedMotion);
@@ -4346,6 +4283,7 @@ export function CommuteGame({
       game.events.off('commute:lose-heart', handleLoseHeart);
       game.events.off('commute:fare-item-stored', handleFareItemStored);
       game.events.off('commute:branch', handleBranch);
+      game.events.off('commute:rail-speed', handleRailSpeed);
       game.events.off('commute:journey-reset', handleJourneyReset);
       game.events.off('commute:ready', syncReducedMotion);
       reducedMotionQuery.removeEventListener('change', syncReducedMotion);
@@ -4364,6 +4302,11 @@ export function CommuteGame({
     gameRef.current?.events.emit('commute:select-item', kind);
   };
 
+  const handleSetRailSpeed = (multiplier: 1 | 2) => {
+    setRailSpeed(multiplier);
+    gameRef.current?.events.emit('commute:set-rail-speed', multiplier);
+  };
+
   const handleNudge = (direction: 'left' | 'right' | 'up' | 'down') => {
     gameRef.current?.events.emit('commute:nudge', direction);
     gameRef.current?.canvas.focus();
@@ -4371,16 +4314,6 @@ export function CommuteGame({
 
   const handleRequestBusStop = () => {
     gameRef.current?.events.emit('commute:request-bus-stop');
-    gameRef.current?.canvas.focus();
-  };
-
-  const handleInteract = () => {
-    gameRef.current?.events.emit('commute:interact');
-    gameRef.current?.canvas.focus();
-  };
-
-  const handleDirectionChoice = (direction: string) => {
-    gameRef.current?.events.emit('commute:choose-direction', direction);
     gameRef.current?.canvas.focus();
   };
 
@@ -4441,39 +4374,8 @@ export function CommuteGame({
     window.setTimeout(() => gameRef.current?.canvas.focus(), 0);
   };
 
-  const isBusInterior = [
-    'choose-item',
-    'item-selected',
-    'reader',
-    'wrong-item',
-    'driver-warning',
-    'tapping',
-    'fare-success',
-    'standing',
-    'seated',
-    'bus-moving',
-    'aisle',
-    'bus-stop-open',
-    'tap-out',
-    'choose-exit-item',
-    'exit-item-selected',
-    'tap-out-warning',
-    'last-stop-reminder',
-    'exit-ok',
-    'alighting',
-    'wrong-stop',
-  ].includes(context);
-  const busJourneyLabel = [
-    'choose-item',
-    'item-selected',
-    'reader',
-    'wrong-item',
-    'driver-warning',
-    'tapping',
-    'fare-success',
-    'standing',
-    'seated',
-  ].includes(context)
+  const isBusInterior = BUS_INTERIOR_CONTEXTS.includes(context);
+  const busJourneyLabel = BUS_BOARDING_CONTEXTS.includes(context)
     ? 'Service 50 · Boarding'
     : context === 'wrong-stop'
       ? 'Service 50 · Wrong stop'
@@ -4482,14 +4384,7 @@ export function CommuteGame({
         : busDoorsOpen && busStopName
           ? `Service 50 · ${busStopName}`
           : 'Service 50 · To Punggol';
-  const showBag = [
-    'choose-item',
-    'wrong-item',
-    'driver-warning',
-    'choose-exit-item',
-    'tap-out-warning',
-    'last-stop-reminder',
-  ].includes(context);
+  const showBag = BUS_BAG_VISIBLE_CONTEXTS.includes(context);
   const railStep = context === 'rail-wrong-stop' || context === 'out-of-time'
     ? wrongRailStop?.legId === 'kadaloor-lrt'
       ? 1
@@ -4512,29 +4407,7 @@ export function CommuteGame({
   const railProgressStep = journeyBranch === 'bus' && railStep >= 2 ? railStep - 1 : railStep;
   const railProgressTotal = journeyBranch === 'bus' ? 2 : 3;
   const isOffice = context === 'office-walk';
-  const controlsLocked = [
-    'bus-arriving',
-    'tapping',
-    'lrt-tapping',
-    'punggol-tapping',
-    'expo-tapping',
-    'expo-gates-open',
-    'punggol-escalator-riding',
-    'standing',
-    'seated',
-    'lrt-arriving',
-    'dtl-arriving',
-    'wrong-stop',
-    'rail-wrong-stop',
-    'out-of-time',
-    'complete',
-  ].includes(context);
-  const directionChoices = context === 'nel-transfer' || context === 'nel-wrong-direction'
-    ? ['HarbourFront', 'Punggol Coast']
-    : context === 'dtl-transfer' || context === 'dtl-wrong-direction'
-      ? ['Expo', 'Bukit Panjang']
-      : undefined;
-  const showInteractControl = !controlsLocked && (isBusInterior || isRail);
+  const controlsLocked = CONTROLS_LOCKED_CONTEXTS.includes(context);
   return (
     <section
       className="relative mx-auto w-full max-h-[calc(100dvh-7rem)] max-w-[1280px] overflow-hidden rounded-[28px] bg-sg-navy shadow-card [&_button:focus-visible]:outline [&_button:focus-visible]:outline-4 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-amber-300 [&_select:focus-visible]:outline [&_select:focus-visible]:outline-4 [&_select:focus-visible]:outline-amber-300"
@@ -4605,7 +4478,7 @@ export function CommuteGame({
       )}
 
       {context !== 'complete' && (
-      <div className={`pointer-events-none absolute left-2 right-2 top-2 z-[65] rounded-2xl bg-sg-navy/90 px-3 py-2 text-center text-white shadow-lg backdrop-blur-sm sm:left-1/2 sm:right-auto sm:w-[min(46%,34rem)] sm:-translate-x-1/2 ${directionChoices ? 'sm:top-3' : 'sm:bottom-3 sm:top-auto'}`}>
+      <div className="pointer-events-none absolute left-2 right-2 top-2 z-[65] rounded-2xl bg-sg-navy/90 px-3 py-2 text-center text-white shadow-lg backdrop-blur-sm sm:bottom-3 sm:left-1/2 sm:right-auto sm:top-auto sm:w-[min(46%,34rem)] sm:-translate-x-1/2">
         <p className="text-[10px] font-black uppercase tracking-[0.18em] text-sg-xp">
           {isExpoExit
             ? 'Expo · Exit D'
@@ -4643,6 +4516,24 @@ export function CommuteGame({
                   Next: {railStop.nextStation}{railStop.targetIsNext ? ' · prepare to alight' : ''}
                 </p>
               )}
+              <div className="pointer-events-auto mt-2 inline-flex rounded-lg border border-white/25 bg-black/25 p-0.5">
+                {([1, 2] as const).map((multiplier) => (
+                  <button
+                    key={multiplier}
+                    type="button"
+                    aria-pressed={railSpeed === multiplier}
+                    aria-label={`${multiplier}x station speed`}
+                    className={`min-h-8 rounded-md px-3 py-1 text-[11px] font-black transition-colors ${
+                      railSpeed === multiplier
+                        ? 'bg-sg-xp text-sg-navy'
+                        : 'text-white/70 hover:text-white'
+                    }`}
+                    onClick={() => handleSetRailSpeed(multiplier)}
+                  >
+                    {multiplier}x
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -4660,9 +4551,49 @@ export function CommuteGame({
       {context === 'rail-wrong-stop' && wrongRailStop && (
         <div className="pointer-events-none absolute inset-0 z-[80] flex items-center justify-center bg-sg-navy/70 p-5 backdrop-blur-sm">
           <div className="max-w-md rounded-3xl border-4 border-red-300 bg-sg-navy px-7 py-6 text-center text-white shadow-2xl">
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-red-300">Wrong MRT stop · −1 heart</p>
-            <p className="mt-2 text-2xl font-black">You alighted at {wrongRailStop.station}</p>
-            <p className="mt-2 text-sm font-bold text-white/85">Returning to the MRT at {wrongRailStop.checkpoint}. Your journey continues from this checkpoint.</p>
+            {wrongRailStop.reason === 'too-far' ? (
+              <>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-red-300">End of the line</p>
+                <p className="mt-2 text-2xl font-black">You went too far</p>
+                <p className="mt-2 text-sm font-bold text-white/85">
+                  You passed Little India and reached HarbourFront. Returning to Punggol MRT so you can choose again.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-red-300">Wrong MRT stop · −1 heart</p>
+                <p className="mt-2 text-2xl font-black">You alighted at {wrongRailStop.station}</p>
+                <p className="mt-2 text-sm font-bold text-white/85">
+                  {wrongRailStop.legId === 'punggol-nel'
+                    ? 'This is not the Downtown Line transfer. Returning to Punggol MRT so you can choose a train again.'
+                    : `Returning to the MRT at ${wrongRailStop.checkpoint}. Your journey continues from this checkpoint.`}
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {context === 'nel-wrong-direction' && (
+        <div className="pointer-events-none absolute inset-0 z-[80] flex items-center justify-center bg-sg-navy/45 p-5 backdrop-blur-sm">
+          <div className="max-w-md rounded-3xl border-4 border-amber-300 bg-sg-navy px-7 py-6 text-center text-white shadow-2xl">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-300">Check the destination</p>
+            <p className="mt-2 text-2xl font-black">This train goes to Punggol Coast</p>
+            <p className="mt-2 text-sm font-bold text-white/85">
+              To reach Little India, board the HarbourFront-bound train from Platform A.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {context === 'dtl-wrong-direction' && (
+        <div className="pointer-events-none absolute inset-0 z-[80] flex items-center justify-center bg-sg-navy/45 p-5 backdrop-blur-sm">
+          <div className="max-w-md rounded-3xl border-4 border-amber-300 bg-sg-navy px-7 py-6 text-center text-white shadow-2xl">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-300">Check the destination</p>
+            <p className="mt-2 text-2xl font-black">This train goes to Bukit Panjang</p>
+            <p className="mt-2 text-sm font-bold text-white/85">
+              To reach Expo, board the Expo-bound train from Platform B.
+            </p>
           </div>
         </div>
       )}
@@ -4770,20 +4701,6 @@ export function CommuteGame({
         >
           <span className="text-lg sm:text-xl">●</span>
           {busDoorsOpen ? 'DOORS OPEN' : busStopRequested ? 'STOPPING' : 'STOP'}
-        </button>
-      )}
-
-      {directionChoices && (
-        <DirectionControls directions={directionChoices} onChoose={handleDirectionChoice} />
-      )}
-
-      {showInteractControl && !directionChoices && (
-        <button
-          type="button"
-          className="absolute bottom-2 left-auto right-14 z-[84] min-h-11 rounded-xl border-2 border-white bg-sg-xp px-3 py-2 text-xs font-black text-sg-navy shadow-xl sm:bottom-3 sm:right-3 sm:px-4"
-          onClick={handleInteract}
-        >
-          INTERACT <span className="hidden sm:inline">· E / SPACE</span>
         </button>
       )}
 

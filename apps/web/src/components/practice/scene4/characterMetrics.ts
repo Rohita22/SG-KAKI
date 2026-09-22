@@ -88,7 +88,9 @@ const RAIL_SEAT_X = [780, 862, 944, 1026, 1108, 1190, 1272, 1354, 1436] as const
 
 function railSeatAnchors(legId: RailLegId): RailSeatAnchor[] {
   return RAIL_SEAT_X.map((x, index) => ({
-    footFloorY: 560,
+    // Lower the seated pose so the hips meet the visible cushion instead of
+    // hovering slightly above it. This affects only rail seating.
+    footFloorY: 595,
     hipY: 400,
     id: `${legId}-seat-${index + 1}`,
     scaleProfile: 'rail-seated',

@@ -18,6 +18,54 @@ const railMaps = [kadaloorMapSource, punggolMapSource, littleIndiaMapSource].map
 );
 
 describe('Scene 4 rail route', () => {
+  it('uses physical boarding zones instead of direction-choice buttons at Punggol', () => {
+    const map = JSON.parse(punggolMapSource) as {
+      layers: Array<{
+        name: string;
+        objects?: Array<{
+          name: string;
+          properties?: Array<{ name: string; value: string }>;
+        }>;
+      }>;
+    };
+    const interactions = map.layers.find((layer) => layer.name === 'Interactions')?.objects ?? [];
+    const boardingZones = interactions.filter((object) =>
+      object.properties?.some((property) => property.name === 'action' && property.value === 'board'),
+    );
+
+    expect(boardingZones.map((zone) => zone.name)).toEqual([
+      'HarbourFront boarding zone',
+      'Punggol Coast boarding zone',
+    ]);
+    expect(interactions.some((object) =>
+      object.properties?.some((property) => property.name === 'action' && property.value === 'choose-direction'),
+    )).toBe(false);
+  });
+
+  it('uses the same physical boarding model for both Downtown Line directions', () => {
+    const map = JSON.parse(littleIndiaMapSource) as {
+      layers: Array<{
+        name: string;
+        objects?: Array<{
+          name: string;
+          properties?: Array<{ name: string; value: string }>;
+        }>;
+      }>;
+    };
+    const interactions = map.layers.find((layer) => layer.name === 'Interactions')?.objects ?? [];
+    const boardingZones = interactions.filter((object) =>
+      object.properties?.some((property) => property.name === 'action' && property.value === 'board'),
+    );
+
+    expect(boardingZones.map((zone) => zone.name)).toEqual([
+      'Expo boarding zone',
+      'Bukit Panjang boarding zone',
+    ]);
+    expect(interactions.some((object) =>
+      object.properties?.some((property) => property.name === 'action' && property.value === 'choose-direction'),
+    )).toBe(false);
+  });
+
   it('plays every intermediate rail stop in route order with a readable fact', () => {
     expect(RAIL_STOP_FACTS['kadaloor-lrt'].map((stop) => stop.station)).toEqual([
       'Oasis', 'Damai', 'Punggol',
@@ -147,11 +195,11 @@ describe('Scene 4 rail route', () => {
       }>;
     };
     const interactions = map.layers.find((layer) => layer.name === 'Interactions')!.objects;
-    const directions = interactions
-      .filter((object) => object.properties?.some((property) => property.name === 'action' && property.value === 'choose-direction'))
+    const boardableDirections = interactions
+      .filter((object) => object.properties?.some((property) => property.name === 'action' && property.value === 'board'))
       .map((object) => object.properties?.find((property) => property.name === 'direction')?.value);
     const spawns = map.layers.find((layer) => layer.name === 'Spawns')!.objects.map((object) => object.name);
-    expect(directions).toEqual(expect.arrayContaining(['Punggol Coast', 'HarbourFront']));
+    expect(boardableDirections).toEqual(expect.arrayContaining(['Punggol Coast', 'HarbourFront']));
     expect(spawns).toEqual(expect.arrayContaining([
       'train-start',
       'train-stop',

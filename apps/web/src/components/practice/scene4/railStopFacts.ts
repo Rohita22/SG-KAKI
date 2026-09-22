@@ -193,12 +193,12 @@ export const RAIL_STOP_FACTS: Record<RailLegId, RailStopFact[]> = {
   ],
 };
 
-// The full arrays above remain the route/fact authority. Gameplay samples key
-// stations so the commute teaches the line without turning every intermediate
-// dwell into a long repetition. Target stops are always retained.
+// The NEL journey is deliberately complete so the player can recognise every
+// stop and choose whether to alight. The longer DTL journey still samples key
+// stations to keep the complete commute playable.
 const PLAYABLE_STOP_INDEXES: Record<RailLegId, readonly number[]> = {
   'kadaloor-lrt': [0, 1, 2],
-  'punggol-nel': [0, 4, 7, 8, 9],
+  'punggol-nel': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
   'little-india-dtl': [0, 1, 3, 6, 13, 19, 21, 22],
 };
 

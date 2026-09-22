@@ -50,7 +50,7 @@ describe('Scene 4 character metrics', () => {
       'bus-standing': 670,
       'bus-seated': 635,
       'rail-standing': 660,
-      'rail-seated': 560,
+      'rail-seated': 595,
     } as const;
 
     Object.entries(representativeFloors).forEach(([profile, floorY]) => {
@@ -74,6 +74,7 @@ describe('Scene 4 character metrics', () => {
         expect(seat.id).toContain(legId);
         expect(seat.hipY).toBeGreaterThan(0);
         expect(seat.footFloorY).toBeGreaterThan(seat.hipY);
+        expect(seat.footFloorY).toBe(595);
         expect(seat.scaleProfile).toBe('rail-seated');
         expect(Math.abs(seatedHipY('rail-seated', seat.footFloorY) - seat.hipY))
           .toBeLessThanOrEqual(VISUAL_TOLERANCES.seatHipPx);

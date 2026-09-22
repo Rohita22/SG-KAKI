@@ -3,7 +3,14 @@ import { describe, expect, it } from 'vitest';
 import { canReleaseTransitionInput } from './navigationSafety';
 import { STATION_STAGES } from './stationConfig';
 
-type MapObject = { name: string; x: number; y: number; width?: number; height?: number };
+type MapObject = {
+  name: string;
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+  polyline?: Array<{ x: number; y: number }>;
+};
 type MapLayer = { name: string; objects?: MapObject[] };
 type TiledMap = { layers: MapLayer[] };
 
@@ -44,6 +51,18 @@ describe('Scene 4 authored station traversal', () => {
         `${stageId} released`,
       ).toBe(true);
     });
+  });
+
+  it('aligns the Punggol trigger and descent path with the visible centre escalator', () => {
+    const map = JSON.parse(
+      readFileSync('public/scenes/scene4/maps/punggol-nel-escalator.tmj', 'utf8'),
+    ) as TiledMap;
+    const entry = objectsFor(map, 'Interactions').find((object) => object.name === 'Escalator entry');
+    const path = objectsFor(map, 'Paths').find((object) => object.name === 'Escalator descent');
+
+    expect(entry).toMatchObject({ x: 925, y: 250, width: 160, height: 120 });
+    expect(path).toMatchObject({ x: 1005, y: 300 });
+    expect(path?.polyline?.at(-1)).toEqual({ x: 0, y: 310 });
   });
 
   it('caps non-interactive station walks at a purposeful traversal distance', () => {

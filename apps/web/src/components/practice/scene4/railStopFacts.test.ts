@@ -3,10 +3,10 @@ import { SCENE4_ROUTE } from './commuteRoute';
 import { nextBouncingStopIndex, RAIL_PLAYABLE_STOP_FACTS, RAIL_STOP_FACTS } from './railStopFacts';
 
 describe('Scene 4 simulated rail pacing', () => {
-  it('keeps the complete station facts while sampling long lines for play', () => {
+  it('plays every NEL stop from Punggol towards HarbourFront', () => {
     expect(RAIL_STOP_FACTS['punggol-nel']).toHaveLength(15);
     expect(RAIL_STOP_FACTS['little-india-dtl']).toHaveLength(23);
-    expect(RAIL_PLAYABLE_STOP_FACTS['punggol-nel']).toHaveLength(5);
+    expect(RAIL_PLAYABLE_STOP_FACTS['punggol-nel']).toEqual(RAIL_STOP_FACTS['punggol-nel']);
     expect(RAIL_PLAYABLE_STOP_FACTS['little-india-dtl']).toHaveLength(8);
   });
 

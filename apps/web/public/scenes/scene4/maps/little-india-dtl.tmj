@@ -110,51 +110,17 @@
           "y": 500
         },
         {
-          "height": 224,
+          "height": 170,
           "id": 14,
-          "name": "Bukit Panjang platform side",
+          "name": "Bukit Panjang boarding zone",
           "properties": [
-            { "name": "action", "type": "string", "value": "choose-direction" },
+            { "name": "action", "type": "string", "value": "board" },
             { "name": "direction", "type": "string", "value": "Bukit Panjang" }
           ],
-          "type": "direction-zone",
-          "width": 720,
-          "x": 0,
+          "type": "board",
+          "width": 300,
+          "x": 190,
           "y": 500
-        },
-        {
-          "height": 224,
-          "id": 15,
-          "name": "Expo platform side",
-          "properties": [
-            { "name": "action", "type": "string", "value": "choose-direction" },
-            { "name": "direction", "type": "string", "value": "Expo" }
-          ],
-          "type": "direction-zone",
-          "width": 720,
-          "x": 1456,
-          "y": 500
-        },
-        {
-          "height": 720,
-          "id": 6,
-          "name": "Platform direction choice",
-          "properties": [
-            {
-              "name": "correctDirection",
-              "type": "string",
-              "value": "Expo"
-            },
-            {
-              "name": "wrongDirection",
-              "type": "string",
-              "value": "Bukit Panjang"
-            }
-          ],
-          "type": "choice",
-          "width": 2176,
-          "x": 0,
-          "y": 0
         }
       ],
       "type": "objectgroup"

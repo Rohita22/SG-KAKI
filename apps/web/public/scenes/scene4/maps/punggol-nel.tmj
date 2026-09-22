@@ -12,10 +12,8 @@
     ],"type":"objectgroup"},
     {"id":7,"name":"Collision","objects":[],"type":"objectgroup"},
     {"id":3,"name":"Interactions","objects":[
-      {"height":224,"id":4,"name":"Punggol Coast platform side","properties":[{"name":"action","type":"string","value":"choose-direction"},{"name":"direction","type":"string","value":"Punggol Coast"}],"type":"direction-zone","width":720,"x":0,"y":500},
-      {"height":224,"id":5,"name":"HarbourFront platform side","properties":[{"name":"action","type":"string","value":"choose-direction"},{"name":"direction","type":"string","value":"HarbourFront"}],"type":"direction-zone","width":720,"x":1456,"y":500},
       {"height":170,"id":6,"name":"HarbourFront boarding zone","properties":[{"name":"action","type":"string","value":"board"},{"name":"direction","type":"string","value":"HarbourFront"}],"type":"board","width":300,"x":1580,"y":500},
-      {"height":724,"id":7,"name":"Platform direction choice","properties":[{"name":"correctDirection","type":"string","value":"HarbourFront"},{"name":"wrongDirection","type":"string","value":"Punggol Coast"}],"type":"choice","width":2176,"x":0,"y":0}
+      {"height":170,"id":7,"name":"Punggol Coast boarding zone","properties":[{"name":"action","type":"string","value":"board"},{"name":"direction","type":"string","value":"Punggol Coast"}],"type":"board","width":300,"x":190,"y":500}
     ],"type":"objectgroup"},
     {"id":4,"name":"Spawns","objects":[
       {"id":8,"name":"player-start","point":true,"type":"player","x":1088,"y":660},
