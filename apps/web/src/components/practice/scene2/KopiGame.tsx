@@ -588,7 +588,7 @@ export function KopiGame({ completionXp, onSessionComplete, onDone }: KopiGamePr
               </div>
             </div>
 
-            <section className="relative -translate-y-16 shrink-0">
+            <section className="relative -translate-y-[4.5rem] shrink-0">
               <div className="relative grid grid-cols-2 items-end gap-x-2 gap-y-2 sm:grid-cols-[minmax(0,3fr)_minmax(6rem,1fr)_minmax(0,5fr)] sm:gap-x-3">
                 <div className="grid grid-cols-3 items-end gap-1 sm:gap-2">
                   {INGREDIENTS.slice(0, 3).map((item) => (

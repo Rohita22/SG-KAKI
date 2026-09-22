@@ -124,7 +124,7 @@ export function AIPracticeScreen() {
         className={
           FULL_BLEED_SCENE_IDS.has(scenario.id)
             ? 'flex min-h-0 flex-1 flex-col'
-            : 'grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,300px)_minmax(0,1fr)] lg:items-start'
+            : 'my-auto grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,300px)_minmax(0,1fr)] lg:items-center'
         }
       >
         {!FULL_BLEED_SCENE_IDS.has(scenario.id) && <div

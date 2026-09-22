@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Map, MessageCircle, Compass, Home, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Map, MessageCircle, Compass, ChevronLeft, ChevronRight } from 'lucide-react';
 import { clsx } from '@/lib/clsx';
 import { useProgress } from '@/state/useProgress';
 import { useDerivedProgress } from '@/state/useDerivedProgress';
@@ -46,19 +46,6 @@ export function Sidebar() {
       </div>
 
       <nav aria-label="Primary" className={clsx("flex flex-col gap-1", collapsed ? "" : "-mt-6")}>
-        <button
-          type="button"
-          title={collapsed ? 'Home' : undefined}
-          aria-label="Home"
-          onClick={(event) => event.stopPropagation()}
-          className={clsx(
-            'relative flex items-center rounded-2xl py-2.5 text-sm font-semibold text-white/60 transition-colors hover:bg-white/5 hover:text-white',
-            collapsed ? 'justify-center px-0' : 'gap-3 px-3',
-          )}
-        >
-          <Home className="size-5 shrink-0" />
-          {!collapsed && <span className="whitespace-nowrap">Home</span>}
-        </button>
         {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}

@@ -4410,7 +4410,7 @@ export function CommuteGame({
   const controlsLocked = CONTROLS_LOCKED_CONTEXTS.includes(context);
   return (
     <section
-      className="relative mx-auto w-full max-h-[calc(100dvh-7rem)] max-w-[1280px] overflow-hidden rounded-[28px] bg-sg-navy shadow-card [&_button:focus-visible]:outline [&_button:focus-visible]:outline-4 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-amber-300 [&_select:focus-visible]:outline [&_select:focus-visible]:outline-4 [&_select:focus-visible]:outline-amber-300"
+      className="relative mx-auto w-full max-w-[calc((100dvh-3.5rem)*16/9)] overflow-hidden rounded-[28px] bg-sg-navy shadow-card [&_button:focus-visible]:outline [&_button:focus-visible]:outline-4 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-amber-300 [&_select:focus-visible]:outline [&_select:focus-visible]:outline-4 [&_select:focus-visible]:outline-amber-300"
       data-commute-context={context}
       data-bus-stop={busStopName ?? ''}
       data-bus-doors={busDoorsOpen ? 'open' : 'closed'}
